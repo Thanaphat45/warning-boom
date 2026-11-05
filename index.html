@@ -18,7 +18,7 @@
       --panel-2: #272e29;
       --line: #343d37;
       --text: #f1f5f0;
-      --muted: #9da99f;
+      --muted: #b3bfb5;
       --green: #8dde83;
       --green-strong: #b1f2a5;
       --ink: #18331b;
@@ -35,10 +35,23 @@
     button { cursor: pointer; }
     .shell { width: min(1120px, 100%); margin: 0 auto; padding: 28px 24px 48px; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .status-pill { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+    .status-pill.ok { border-color: #8dde8366; background: #8dde8314; }
+    .status-pill.warn { border-color: #e8c76a66; background: #e8c76a14; }
+    @media (max-width: 480px) {
+      header { gap: 8px; }
+      .brand { min-width: 0; gap: 9px; }
+      .brand > div:last-child { min-width: 0; }
+      .brand-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .brand-sub { display: none; }
+      .header-actions { gap: 6px; flex-shrink: 0; }
+      .status-pill { min-height: 36px; padding: 0 9px; font-size: 11px; }
+    }
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--green); color: var(--ink); font-size: 22px; }
     .brand-name { font-size: 16px; font-weight: 750; letter-spacing: -.2px; }
-    .brand-sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .brand-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
     .today-button, .primary-button, .secondary-button, .icon-button {
       border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--panel-2);
       min-height: 42px; padding: 0 15px; transition: .15s ease;
@@ -76,7 +89,7 @@
     .week-list.visible { display: flex; }
     .template-panel { margin-top: 19px; padding-top: 15px; border-top: 1px solid var(--line); }
     .template-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
-    .template-copy { margin: 6px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .template-copy { margin: 6px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .template-controls { display: flex; flex-direction: column; gap: 8px; }
     .template-controls input, .template-controls select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #171d19; color: var(--text); padding: 9px 10px; }
     .template-actions { display: flex; gap: 7px; }
@@ -86,7 +99,7 @@
     .sync-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
     .sync-advanced { margin: 10px 0; }
     .sync-advanced summary { font-size: 12px; font-weight: 500; color: var(--muted, #667); }
-    .sync-copy { margin: 7px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .sync-copy { margin: 7px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .sync-controls { display: flex; flex-direction: column; gap: 8px; }
     .sync-controls input, .sync-controls select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #171d19; color: var(--text); padding: 9px 10px; }
     .sync-controls input:focus, .sync-controls select:focus { border-color: var(--green); box-shadow: 0 0 0 3px #8dde8320; }
@@ -142,8 +155,9 @@
     .monthly-duty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .monthly-duty-row .label { min-width: 0; max-width: calc(100% - 52px); overflow: hidden; padding: 5px 9px; border-radius: 999px; color: #17211a; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
     .monthly-duty-row strong { min-width: 42px; color: var(--text); text-align: right; font-size: 12px; }
-    .monthly-duty-empty { margin: 0; color: var(--muted); font-size: 11px; }
-    .hint { margin-top: 15px; padding: 11px 12px; border-radius: 12px; color: #c5d0c6; background: #8dde8310; font-size: 11px; line-height: 1.5; }
+    .summary-total { color: var(--green-strong, #8dde83); font-weight: 600; }
+    .monthly-duty-empty { margin: 0; color: var(--muted); font-size: 13px; }
+    .hint { margin-top: 15px; padding: 11px 12px; border-radius: 12px; color: #c5d0c6; background: #8dde8310; font-size: 13px; line-height: 1.5; }
     .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
     .backup-actions button { min-height: 38px; padding: 7px 9px; font-size: 11px; }
     .print-button { width: 100%; margin-top: 8px; min-height: 38px; font-size: 11px; }
@@ -207,7 +221,7 @@
       header { margin-bottom: 7px; }
       .intro, .today-card { display: none !important; }
       .brand-mark { border: 1px solid #9aa99b; }
-      .today-button, .month-controls, .week-navigation .icon-button, .view-tabs, .add-duty, .remove-duty, .summary, .hint, .backup-actions, .print-button, .template-panel, .sync-panel, footer, .mobile-note, .overlay { display: none !important; }
+      .today-button, .status-pill, .month-controls, .week-navigation .icon-button, .view-tabs, .add-duty, .remove-duty, .summary, .hint, .backup-actions, .print-button, .template-panel, .sync-panel, footer, .mobile-note, .overlay { display: none !important; }
       .layout { grid-template-columns: minmax(0, 1fr) 205px; gap: 7px; }
       .calendar-card, .side-card { background: #fff; border-color: #c8d0ca; box-shadow: none; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; }
       .calendar-card { padding: 7px; }
@@ -242,10 +256,13 @@
   <main class="shell">
     <header>
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">✚</div>
+        <div class="brand-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h3M8 17h6"/></svg></div>
         <div><div class="brand-name">ตารางหน้าที่ของฉัน</div><div class="brand-sub">บันทึกง่าย ดูได้ทั้งเดือน</div></div>
       </div>
-      <button class="today-button" id="todayButton">วันนี้</button>
+      <div class="header-actions">
+        <button class="status-pill" type="button" id="statusPill" aria-label="สถานะการซิงก์และแจ้งเตือน">☁️ ยังไม่ซิงก์</button>
+        <button class="today-button" id="todayButton">วันนี้</button>
+      </div>
     </header>
 
     <section class="intro">
@@ -293,7 +310,7 @@
           <button class="icon-button" type="submit" aria-label="เพิ่มหน้าที่">＋</button>
         </form>
         <section class="monthly-duty-summary" aria-live="polite">
-          <h4>สรุปเวรเดือนนี้</h4>
+          <h4>สรุปเวรเดือนนี้ <span class="summary-total" id="summaryTotal"></span></h4>
           <div class="monthly-duty-counts" id="monthlyDutyCounts"></div>
         </section>
         <details class="template-panel">
@@ -362,8 +379,8 @@
           </div>
           <p class="sync-status" id="notificationStatus" aria-live="polite">ยังไม่ได้เปิดการแจ้งเตือน</p>
         </details>
-        <div class="summary"><strong id="monthCount">0</strong><span>วันที่มีหน้าที่ในเดือนนี้</span></div>
-        <div class="hint">ข้อมูลบันทึกไว้ในเบราว์เซอร์นี้โดยอัตโนมัติ</div>
+        <span id="monthCount" hidden>0</span>
+        <div class="hint" id="storageHint">ข้อมูลบันทึกไว้ในเครื่องนี้ · เข้าสู่ระบบและเข้าร่วมตารางที่แชร์เพื่อซิงก์หลายเครื่อง</div>
         <div class="backup-actions">
           <button class="secondary-button" type="button" id="exportBackup">สำรองข้อมูล</button>
           <button class="secondary-button" type="button" id="importBackupButton">นำเข้าข้อมูลสำรอง</button>
@@ -372,7 +389,7 @@
         <button class="secondary-button print-button" type="button" id="printSchedule">พิมพ์ / บันทึกเป็น PDF</button>
       </aside>
     </div>
-    <footer>ตารางส่วนตัว • ข้อมูลอยู่ในอุปกรณ์ที่ใช้</footer>
+    <footer>ตารางหน้าที่ • บันทึกในเครื่องเสมอ และซิงก์ขึ้นคลาวด์เมื่อเข้าร่วมตารางที่แชร์</footer>
   </main>
 
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
@@ -599,7 +616,20 @@
           $('notificationStatus').textContent = 'ส่งการแจ้งเตือนทดสอบแล้ว';
         } catch (error) { $('notificationStatus').textContent = `ทดสอบไม่สำเร็จ: ${error.message}`; }
       }
+      let currentUser = null;
+      function updateStatusPill() {
+        const pill = $('statusPill'); if (!pill) return;
+        const note = $('notificationStatus')?.textContent || '';
+        const bellOn = /^(เปิดแจ้งเตือน(แล้ว|อยู่)|บันทึกเวลาแจ้งเตือนใหม่)/.test(note);
+        const bell = bellOn ? ` · 🔔 ${$('reminderTime').value}` : '';
+        pill.classList.remove('ok', 'warn');
+        if (!currentUser) { pill.textContent = '☁️ ยังไม่ซิงก์'; $('storageHint').textContent = 'ข้อมูลบันทึกไว้ในเครื่องนี้ · เข้าสู่ระบบและเข้าร่วมตารางที่แชร์เพื่อซิงก์หลายเครื่อง'; return; }
+        if (!cloudScheduleId) { pill.classList.add('warn'); pill.textContent = '🟡 ยังไม่ได้แชร์'; $('storageHint').textContent = 'เข้าสู่ระบบแล้ว · สร้างหรือเข้าร่วมตารางที่แชร์เพื่อเริ่มซิงก์'; return; }
+        pill.classList.add('ok'); pill.textContent = `🟢 ซิงก์แล้ว${bell}`;
+        $('storageHint').textContent = 'ซิงก์กับตารางที่แชร์แล้ว · ทุกเครื่องที่เข้าร่วมเห็นข้อมูลเดียวกัน';
+      }
       function showSyncSession(user) {
+        currentUser = user || null;
         $('syncAccount').classList.toggle('visible', Boolean(supabaseClient));
         $('syncWorkspace').classList.toggle('visible', Boolean(user));
         $('signOutSync').style.display = user ? 'block' : 'none';
@@ -750,7 +780,7 @@
           if (key === dateKey(today)) btn.classList.add('today');
           btn.setAttribute('aria-label', `${thaiLong.format(date)}${entries.length ? ` มีหน้าที่ ${entries.map(e => e.duty).join(', ')}` : ''}`);
           const num = document.createElement('span'); num.className = 'date-number'; num.textContent = date.getDate(); btn.append(num);
-          if (i % 7 === 0 || date.getDate() === 1) {
+          if (date.getDate() === 1) {
             const label = document.createElement('span'); label.className = 'day-label'; label.textContent = thaiMonthShort.format(date); btn.append(label);
           }
           const chips = document.createElement('span'); chips.className = 'chips';
@@ -881,7 +911,13 @@
         if (!duties.length) {
           const empty = document.createElement('p'); empty.className = 'monthly-duty-empty'; empty.textContent = 'เพิ่มชื่อเวรเพื่อเริ่มสรุป'; container.append(empty); return;
         }
-        duties.forEach(duty => {
+        const totalDays = Object.keys(data.entries).filter(key => { const [y, m] = key.split('-').map(Number); return y === year && m === month + 1 && data.entries[key]?.length; }).length;
+        $('summaryTotal').textContent = totalDays ? `· ${totalDays} วันมีหน้าที่` : '';
+        const used = duties.filter(duty => counts.get(duty));
+        if (!used.length) {
+          const empty = document.createElement('p'); empty.className = 'monthly-duty-empty'; empty.textContent = 'ยังไม่มีเวรในเดือนนี้ แตะวันที่ในปฏิทินเพื่อเพิ่ม'; container.append(empty); return;
+        }
+        used.sort((a, b) => counts.get(b) - counts.get(a)).forEach(duty => {
           const row = document.createElement('div'); row.className = 'monthly-duty-row';
           const label = document.createElement('span'); label.className = 'label'; label.textContent = duty; label.style.backgroundColor = colorForDuty(duty);
           const count = document.createElement('strong'); count.textContent = `${counts.get(duty) || 0} วัน`;
@@ -967,6 +1003,12 @@
       $('disableNotifications').addEventListener('click', disablePushNotifications);
       $('testNotification').addEventListener('click', testPushNotification);
       $('reminderTime').addEventListener('change', onReminderSettingChange);
+      ['syncStatus', 'notificationStatus'].forEach(id => new MutationObserver(updateStatusPill).observe($(id), { childList: true, characterData: true, subtree: true }));
+      $('statusPill').addEventListener('click', () => {
+        const target = !currentUser || !cloudScheduleId ? $('syncStatus').closest('details') : $('notificationStatus').closest('details');
+        if (target) { target.open = true; target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      });
+      updateStatusPill();
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
       try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset); } catch (_) {}
       $('copyShareCode').addEventListener('click', async () => {
