@@ -598,12 +598,17 @@
         if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
           $('notificationStatus').textContent = 'เบราว์เซอร์นี้ยังใช้ Web Push ไม่ได้ ต้องเปิดเว็บผ่าน HTTPS บนเบราว์เซอร์ที่รองรับ'; return;
         }
-        if (!supabaseClient || !cloudScheduleId) { $('notificationStatus').textContent = 'เชื่อมต่อ Supabase และเข้าร่วมตารางร่วมกันก่อนเปิดการแจ้งเตือน'; return; }
+        if (!supabaseClient || !currentUser) { $('notificationStatus').textContent = 'เข้าสู่ระบบก่อนเปิดการแจ้งเตือน (ส่วน "ใช้ร่วมกันหลายเครื่อง")'; return; }
         const publicKey = $('vapidPublicKey').value.trim();
         if (!publicKey) { $('notificationStatus').textContent = 'ใส่ VAPID public key ในส่วนใช้ร่วมกันหลายเครื่องก่อน'; return; }
         const permissionRequest = Notification.requestPermission();
         const permission = await permissionRequest;
         if (permission !== 'granted') { $('notificationStatus').textContent = 'ยังไม่ได้รับอนุญาตให้ส่งการแจ้งเตือน'; return; }
+        if (!cloudScheduleId) {
+          // Reminders are sent from the server, so it needs a cloud copy of the schedule. Create one automatically.
+          $('notificationStatus').textContent = 'กำลังเก็บตารางขึ้นคลาวด์เพื่อใช้แจ้งเตือน…';
+          if (!(await createSharedSchedule(null, true))) { $('notificationStatus').textContent = 'สร้างตารางบนคลาวด์ไม่สำเร็จ ดูข้อความในส่วน "ใช้ร่วมกันหลายเครื่อง"'; return; }
+        }
         try {
           serviceWorkerRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
           await navigator.serviceWorker.ready;
@@ -781,19 +786,20 @@
           });
         } catch (error) { supabaseClient = null; syncStatus(`เชื่อมต่อไม่สำเร็จ: ${translateAuthError(error)}`); }
       }
-      async function createSharedSchedule() {
-        if (!supabaseClient) return;
+      async function createSharedSchedule(event, silent = false) {
+        if (!supabaseClient) return false;
         const name = $('sharedScheduleName').value.trim() || 'ตารางหน้าที่พยาบาล';
-        if (!confirm('สร้างตารางร่วมกันและส่งข้อมูลในเบราว์เซอร์นี้ไปยังฐานข้อมูลออนไลน์หรือไม่?')) return;
+        if (!silent && !confirm('สร้างตารางร่วมกันและส่งข้อมูลในเบราว์เซอร์นี้ไปยังฐานข้อมูลออนไลน์หรือไม่?')) return false;
         syncStatus('กำลังสร้างตารางร่วมกัน…');
         const { data: result, error } = await supabaseClient.rpc('create_shared_schedule', { p_name: name, p_payload: data });
-        if (error) { syncStatus(`สร้างตารางไม่สำเร็จ: ${error.message}`); return; }
+        if (error) { syncStatus(`สร้างตารางไม่สำเร็จ: ${error.message}`); return false; }
         const created = Array.isArray(result) ? result[0] : result;
-        if (!created?.schedule_id) { syncStatus('สร้างตารางแล้วแต่ไม่ได้รับรหัสตาราง'); return; }
+        if (!created?.schedule_id) { syncStatus('สร้างตารางแล้วแต่ไม่ได้รับรหัสตาราง'); return false; }
         cloudScheduleId = created.schedule_id; localStorage.setItem(SHARED_SCHEDULE_KEY, cloudScheduleId);
         $('currentShareCode').hidden = false; $('copyShareCode').hidden = false;
         $('currentShareCode').textContent = `รหัสเชิญ: ${created.invite_code}`;
         await startRealtime(cloudScheduleId); syncStatus('สร้างตารางแล้ว ส่งรหัสเชิญให้ผู้ร่วมงาน');
+        return true;
       }
       async function joinSharedSchedule() {
         if (!supabaseClient) return;
