@@ -36,6 +36,9 @@
     .shell { width: min(1120px, 100%); margin: 0 auto; padding: 28px 24px 48px; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
     .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+    .filter-bar[hidden] { display: none; }
+    .me-label { color: var(--text); font-weight: 700; }
+    .me-rename { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
     .filter-bar select { min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff08; color: var(--text); font: inherit; font-size: 13px; }
     .mine-toggle { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
     .mine-toggle:disabled { opacity: .45; cursor: default; }
@@ -309,9 +312,9 @@
 
     <div class="layout">
       <section class="calendar-card" aria-label="ปฏิทินรายเดือน">
-        <div class="filter-bar">
-          <label for="myNameSelect">ฉันคือ</label>
-          <select id="myNameSelect" aria-label="เลือกชื่อของฉัน"></select>
+        <div class="filter-bar" id="filterBar" hidden>
+          <span class="me-label" id="meLabel"></span>
+          <button class="me-rename" type="button" id="renameMe">เปลี่ยนชื่อ</button>
           <button class="mine-toggle" type="button" id="mineToggle" aria-pressed="false">เฉพาะเวรของฉัน</button>
         </div>
         <div class="view-tabs" role="tablist" aria-label="รูปแบบการดูตาราง">
@@ -402,7 +405,7 @@
         </details>
         <details class="sync-panel">
           <summary>แจ้งเตือนบนโทรศัพท์</summary>
-          <p class="sync-copy">เตือนเฉพาะเวรของชื่อที่เลือกใน "ฉันคือ" (และเวรที่ยังไม่ระบุผู้รับผิดชอบ) · ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
+          <p class="sync-copy">เตือนเฉพาะเวรของคุณ (ตามชื่อในบัญชี) และเวรที่ยังไม่ระบุผู้รับผิดชอบ · ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
           <div class="sync-controls">
             <label class="field-label" for="reminderOffset">เตือนเมื่อ</label>
             <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
@@ -695,7 +698,10 @@
         $('storageHint').textContent = 'ซิงก์กับตารางที่แชร์แล้ว · ทุกเครื่องที่เข้าร่วมเห็นข้อมูลเดียวกัน';
       }
       function showSyncSession(user) {
+        const changed = (currentUser?.id || null) !== (user?.id || null);
         currentUser = user || null;
+        if (!user && accountName) { accountName = ''; mineOnly = false; renderAll(); }
+        if (user && (changed || !accountName)) ensureAccountName(user);
         $('syncAccount').classList.toggle('visible', Boolean(supabaseClient));
         $('syncWorkspace').classList.toggle('visible', Boolean(user));
         $('signOutSync').style.display = user ? 'block' : 'none';
@@ -809,7 +815,7 @@
       const MY_NAME_KEY = 'nursing-duty-my-name-v1'; const MINE_ONLY_KEY = 'nursing-duty-mine-only-v1';
       const readPref = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; } };
       const writePref = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
-      let myName = readPref(MY_NAME_KEY, ''); let mineOnly = readPref(MINE_ONLY_KEY, '0') === '1';
+      let myName = ''; let mineOnly = readPref(MINE_ONLY_KEY, '0') === '1';
       function ensureMembers() { if (!Array.isArray(data.members)) data.members = []; return data.members; }
       function addMemberPrompt() {
         const name = (prompt('ชื่อสมาชิกใหม่ (เช่น ชื่อเล่น)') || '').trim().slice(0, 30);
@@ -818,15 +824,36 @@
         return name;
       }
       function visible(entries) { return mineOnly && myName ? entries.filter(entry => entry.assignee === myName) : entries; }
+      var accountName = '';
       function renderFilterBar() {
-        const select = $('myNameSelect'); select.replaceChildren();
-        const none = document.createElement('option'); none.value = ''; none.textContent = '— เลือกชื่อ —'; select.append(none);
-        ensureMembers().forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.append(option); });
-        const add = document.createElement('option'); add.value = '__add'; add.textContent = '+ เพิ่มชื่อ…'; select.append(add);
-        if (myName && !ensureMembers().includes(myName)) myName = '';
-        select.value = myName;
+        myName = accountName;
+        $('filterBar').hidden = !accountName;
+        $('meLabel').textContent = accountName ? `👤 ${accountName}` : '';
         $('mineToggle').setAttribute('aria-pressed', String(mineOnly && Boolean(myName)));
-        $('mineToggle').disabled = !myName;
+      }
+      // Name comes from the account (user_metadata.display_name); asked once, then shared by every device.
+      let askingName = false;
+      async function ensureAccountName(user, forceAsk = false) {
+        if (!user || !supabaseClient || askingName) return;
+        let name = (user.user_metadata?.display_name || '').trim();
+        if (!name || forceAsk) {
+          askingName = true;
+          const fallback = name || (user.email || '').split('@')[0].slice(0, 30);
+          const answer = (prompt('ชื่อเล่นของคุณ (ใช้แสดงในตารางเวรและแจ้งเตือน)', fallback) || '').trim().slice(0, 30);
+          askingName = false;
+          if (!answer && name) return;
+          const oldName = name; name = answer || fallback;
+          const { error } = await supabaseClient.auth.updateUser({ data: { display_name: name } });
+          if (error) { syncStatus(`บันทึกชื่อไม่สำเร็จ: ${translateAuthError(error)}`); return; }
+          if (oldName && oldName !== name) {
+            for (const entries of Object.values(data.entries)) entries.forEach(entry => { if (entry.assignee === oldName) entry.assignee = name; });
+            const members = ensureMembers(); const at = members.indexOf(oldName); if (at >= 0) members.splice(at, 1);
+          }
+        }
+        accountName = name;
+        const members = ensureMembers(); if (!members.includes(name)) members.push(name);
+        save(); renderAll();
+        onReminderSettingChange(); // tie this device's reminders to the account name
       }
       function fillAssigneeSelect(current) {
         const select = $('assigneeSelect'); select.replaceChildren();
@@ -1268,14 +1295,7 @@
         if ($('assigneeSelect').value !== '__add') return;
         const name = addMemberPrompt(); fillAssigneeSelect(name); renderFilterBar();
       });
-      $('myNameSelect').addEventListener('change', () => {
-        let value = $('myNameSelect').value;
-        if (value === '__add') value = addMemberPrompt();
-        myName = value; writePref(MY_NAME_KEY, myName);
-        if (!myName) { mineOnly = false; writePref(MINE_ONLY_KEY, '0'); }
-        renderAll();
-        onReminderSettingChange(); // keep this device's reminders tied to the chosen name
-      });
+      $('renameMe').addEventListener('click', () => ensureAccountName(currentUser, true));
       $('mineToggle').addEventListener('click', () => { mineOnly = !mineOnly; writePref(MINE_ONLY_KEY, mineOnly ? '1' : '0'); renderAll(); });
       $('connectSupabase').addEventListener('click', connectSupabase);
       $('signUpSync').addEventListener('click', async () => {
