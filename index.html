@@ -35,6 +35,22 @@
     button { cursor: pointer; }
     .shell { width: min(1120px, 100%); margin: 0 auto; padding: 28px 24px 48px; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+    .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+    .filter-bar select { min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff08; color: var(--text); font: inherit; font-size: 13px; }
+    .mine-toggle { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+    .mine-toggle:disabled { opacity: .45; cursor: default; }
+    .mine-toggle[aria-pressed="true"] { border-color: #8dde8399; background: #8dde8322; color: var(--green-strong, #8dde83); font-weight: 700; }
+    .assignee-tag { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #ffffff14; color: var(--text); font-size: 11px; font-weight: 600; }
+    .repeat-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 8px; }
+    .repeat-row[hidden] { display: none; }
+    .share-button { width: 100%; margin-top: 8px; }
+    .day-entries { display: grid; gap: 6px; margin: 0 0 14px; }
+    .day-entry { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #ffffff06; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+    .day-entry.active { border-color: #8dde83aa; background: #8dde8318; }
+    .day-entry .pill { padding: 3px 9px; border-radius: 999px; color: #17211a; font-weight: 700; }
+    .day-entry .who { color: var(--muted); }
+    .day-entries-title { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+    .add-new-entry { justify-self: start; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 10px; background: none; color: var(--green-strong, #8dde83); font: inherit; font-size: 13px; cursor: pointer; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .status-pill { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
     .status-pill.ok { border-color: #8dde8366; background: #8dde8314; }
@@ -279,6 +295,11 @@
 
     <div class="layout">
       <section class="calendar-card" aria-label="ปฏิทินรายเดือน">
+        <div class="filter-bar">
+          <label for="myNameSelect">ฉันคือ</label>
+          <select id="myNameSelect" aria-label="เลือกชื่อของฉัน"></select>
+          <button class="mine-toggle" type="button" id="mineToggle" aria-pressed="false">เฉพาะเวรของฉัน</button>
+        </div>
         <div class="view-tabs" role="tablist" aria-label="รูปแบบการดูตาราง">
           <button class="view-tab active" type="button" data-view="month" role="tab" aria-selected="true">รายเดือน</button>
           <button class="view-tab" type="button" data-view="week" role="tab" aria-selected="false">รายสัปดาห์</button>
@@ -386,6 +407,7 @@
           <button class="secondary-button" type="button" id="importBackupButton">นำเข้าข้อมูลสำรอง</button>
           <input type="file" id="importBackupFile" accept=".json,application/json" hidden>
         </div>
+        <button class="primary-button share-button" type="button" id="shareImage">📤 แชร์รูปตาราง (LINE)</button>
         <button class="secondary-button print-button" type="button" id="printSchedule">พิมพ์ / บันทึกเป็น PDF</button>
       </aside>
     </div>
@@ -398,9 +420,32 @@
         <div><h2 id="dialogTitle">เพิ่มหน้าที่</h2><p id="selectedDate"></p></div>
         <button class="close-button" type="button" id="closeDialog" aria-label="ปิด">×</button>
       </div>
+      <div id="dayEntriesWrap" hidden>
+        <p class="day-entries-title">หน้าที่ในวันนี้ (แตะเพื่อแก้ไข)</p>
+        <div class="day-entries" id="dayEntries"></div>
+      </div>
       <div class="field">
         <label for="dutySelect">เลือกหน้าที่</label>
         <select id="dutySelect"></select>
+      </div>
+      <div class="field">
+        <label for="assigneeSelect">ผู้รับผิดชอบ</label>
+        <select id="assigneeSelect"></select>
+      </div>
+      <div class="field">
+        <label for="repeatSelect">ทำซ้ำ</label>
+        <select id="repeatSelect">
+          <option value="none">ไม่ทำซ้ำ</option>
+          <option value="daily">ทุกวัน</option>
+          <option value="every2">วันเว้นวัน</option>
+          <option value="weekly">ทุกสัปดาห์ (วันเดียวกัน)</option>
+          <option value="biweekly">ทุก 2 สัปดาห์</option>
+          <option value="monthly">ทุกเดือน (วันที่เดียวกัน)</option>
+        </select>
+        <div class="repeat-row" id="repeatRow" hidden>
+          <label for="repeatUntil" style="align-self:center">จนถึงวันที่</label>
+          <input id="repeatUntil" type="date">
+        </div>
       </div>
       <div class="field">
         <label for="noteInput">หมายเหตุ (ถ้ามี)</label>
@@ -463,13 +508,14 @@
           if (stored && Array.isArray(stored.duties) && stored.entries && typeof stored.entries === 'object') {
             stored.colors = stored.colors && typeof stored.colors === 'object' ? stored.colors : {};
             stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
+            stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
             for (const entries of Object.values(stored.entries)) {
               if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
             }
             return stored;
           }
         } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
-        return { duties: defaults.slice(), entries: {}, colors: {}, templates: {} };
+        return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [] };
       }
       function save() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -502,7 +548,8 @@
           duties: Array.isArray(value.duties) ? value.duties.filter(item => typeof item === 'string') : defaults.slice(),
           entries: value.entries && typeof value.entries === 'object' ? value.entries : {},
           colors: value.colors && typeof value.colors === 'object' ? value.colors : {},
-          templates: value.templates && typeof value.templates === 'object' ? value.templates : {}
+          templates: value.templates && typeof value.templates === 'object' ? value.templates : {},
+          members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : []
         };
         for (const entries of Object.values(normalized.entries)) {
           if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
@@ -739,8 +786,139 @@
       function formatDay(date) {
         return new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'short' }).format(date);
       }
+      // ---- Members, "mine" filter ----
+      const MY_NAME_KEY = 'nursing-duty-my-name-v1'; const MINE_ONLY_KEY = 'nursing-duty-mine-only-v1';
+      const readPref = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; } };
+      const writePref = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
+      let myName = readPref(MY_NAME_KEY, ''); let mineOnly = readPref(MINE_ONLY_KEY, '0') === '1';
+      function ensureMembers() { if (!Array.isArray(data.members)) data.members = []; return data.members; }
+      function addMemberPrompt() {
+        const name = (prompt('ชื่อสมาชิกใหม่ (เช่น ชื่อเล่น)') || '').trim().slice(0, 30);
+        if (!name) return '';
+        const members = ensureMembers(); if (!members.includes(name)) { members.push(name); save(); }
+        return name;
+      }
+      function visible(entries) { return mineOnly && myName ? entries.filter(entry => entry.assignee === myName) : entries; }
+      function renderFilterBar() {
+        const select = $('myNameSelect'); select.replaceChildren();
+        const none = document.createElement('option'); none.value = ''; none.textContent = '— เลือกชื่อ —'; select.append(none);
+        ensureMembers().forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.append(option); });
+        const add = document.createElement('option'); add.value = '__add'; add.textContent = '+ เพิ่มชื่อ…'; select.append(add);
+        if (myName && !ensureMembers().includes(myName)) myName = '';
+        select.value = myName;
+        $('mineToggle').setAttribute('aria-pressed', String(mineOnly && Boolean(myName)));
+        $('mineToggle').disabled = !myName;
+      }
+      function fillAssigneeSelect(current) {
+        const select = $('assigneeSelect'); select.replaceChildren();
+        const none = document.createElement('option'); none.value = ''; none.textContent = '— ไม่ระบุ —'; select.append(none);
+        const names = [...ensureMembers()]; if (current && !names.includes(current)) names.push(current);
+        names.forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.append(option); });
+        const add = document.createElement('option'); add.value = '__add'; add.textContent = '+ เพิ่มชื่อ…'; select.append(add);
+        select.value = current || (myName && ensureMembers().includes(myName) ? myName : '');
+      }
+      // ---- Recurring duties ----
+      function repeatDates(startKey, mode, untilKey) {
+        const [y, m, d] = startKey.split('-').map(Number);
+        const [uy, um, ud] = untilKey.split('-').map(Number);
+        const until = new Date(uy, um - 1, ud); const keys = [];
+        for (let i = 1; i <= 400; i++) {
+          let next;
+          if (mode === 'daily') next = new Date(y, m - 1, d + i);
+          else if (mode === 'every2') next = new Date(y, m - 1, d + i * 2);
+          else if (mode === 'weekly') next = new Date(y, m - 1, d + i * 7);
+          else if (mode === 'biweekly') next = new Date(y, m - 1, d + i * 14);
+          else if (mode === 'monthly') { next = new Date(y, m - 1 + i, d); if (next.getDate() !== d) { if (next > until) break; continue; } }
+          else break;
+          if (next > until) break;
+          keys.push(dateKey(next));
+        }
+        return keys;
+      }
+      // ---- Share as image ----
+      function fitText(ctx, text, maxWidth) {
+        if (ctx.measureText(text).width <= maxWidth) return text;
+        let out = text; while (out.length > 1 && ctx.measureText(out + '…').width > maxWidth) out = out.slice(0, -1);
+        return out + '…';
+      }
+      function roundRect(ctx, x, y, w, h, radius) {
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, w, h, radius); else ctx.rect(x, y, w, h);
+      }
+      async function shareScheduleImage() {
+        const button = $('shareImage'); const label = button.textContent; button.disabled = true; button.textContent = 'กำลังสร้างรูป…';
+        try {
+          if (document.fonts?.ready) await document.fonts.ready;
+          const isWeek = activeView === 'week';
+          const days = []; let title;
+          if (isWeek) {
+            const start = weekStart(selectedDate);
+            for (let i = 0; i < 7; i++) { const date = new Date(start); date.setDate(start.getDate() + i); days.push(date); }
+            title = `ตารางเวร ${formatDay(days[0])} – ${formatDay(days[6])}`;
+          } else {
+            const first = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1);
+            const start = new Date(first); start.setDate(1 - first.getDay());
+            for (let i = 0; i < 42; i++) { const date = new Date(start); date.setDate(start.getDate() + i); days.push(date); }
+            while (days.length > 35 && days.slice(-7).every(date => date.getMonth() !== shownMonth.getMonth())) days.splice(-7);
+            title = `ตารางเวร ${thaiMonth.format(shownMonth)}`;
+          }
+          const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
+          const W = 1080, pad = 36, cols = 7, headH = 150, weekdayH = 50;
+          const rows = isWeek ? 1 : days.length / 7;
+          const cellW = (W - pad * 2) / cols; const cellH = isWeek ? 520 : 170;
+          const H = headH + weekdayH + rows * cellH + pad + 40;
+          const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#171b19'; ctx.fillRect(0, 0, W, H);
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#eef3ee'; ctx.font = `800 46px ${font}`; ctx.fillText(title, pad, 40);
+          ctx.fillStyle = '#b3bfb5'; ctx.font = `500 24px ${font}`;
+          ctx.fillText(mineOnly && myName ? `เฉพาะเวรของ ${myName}` : 'ทุกคน', pad, 100);
+          const weekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+          ctx.font = `700 24px ${font}`; ctx.fillStyle = '#b3bfb5';
+          weekdays.forEach((name, i) => ctx.fillText(name, pad + i * cellW + 12, headH + 10));
+          const todayKey = dateKey(new Date());
+          days.forEach((date, i) => {
+            const col = i % 7, row = Math.floor(i / 7);
+            const x = pad + col * cellW, y = headH + weekdayH + row * cellH;
+            const outside = !isWeek && date.getMonth() !== shownMonth.getMonth();
+            ctx.globalAlpha = outside ? 0.35 : 1;
+            ctx.fillStyle = '#222925'; roundRect(ctx, x + 3, y + 3, cellW - 6, cellH - 6, 14); ctx.fill();
+            const key = dateKey(date);
+            if (key === todayKey) { ctx.strokeStyle = '#8dde83'; ctx.lineWidth = 3; ctx.stroke(); }
+            ctx.fillStyle = '#eef3ee'; ctx.font = `800 28px ${font}`; ctx.fillText(String(date.getDate()), x + 14, y + 12);
+            const entries = visible(data.entries[key] || []);
+            const maxChips = isWeek ? 9 : 3; let cy = y + 52;
+            entries.slice(0, maxChips).forEach(entry => {
+              const text = `${entry.done ? '✓ ' : ''}${entry.duty}${entry.assignee ? ' · ' + entry.assignee : ''}`;
+              const chipH = isWeek ? 34 : 30;
+              ctx.font = `700 ${isWeek ? 20 : 17}px ${font}`;
+              ctx.fillStyle = colorForDuty(entry.duty); roundRect(ctx, x + 10, cy, cellW - 20, chipH, 10); ctx.fill();
+              ctx.fillStyle = '#17211a'; ctx.fillText(fitText(ctx, text, cellW - 34), x + 17, cy + (isWeek ? 7 : 6));
+              cy += chipH + 6;
+            });
+            if (entries.length > maxChips) { ctx.fillStyle = '#b3bfb5'; ctx.font = `700 18px ${font}`; ctx.fillText(`+${entries.length - maxChips} อื่นๆ`, x + 14, cy + 2); }
+            ctx.globalAlpha = 1;
+          });
+          ctx.fillStyle = '#7f8b81'; ctx.font = `500 20px ${font}`;
+          ctx.fillText('สร้างจาก ตารางหน้าที่ของฉัน', pad, H - 46);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) throw new Error('เบราว์เซอร์สร้างรูปไม่ได้');
+          const fileName = `${title.replace(/\s+/g, '-')}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare?.({ files: [file] })) {
+            try { await navigator.share({ files: [file], title }); return; }
+            catch (error) { if (error?.name === 'AbortError') return; }
+          }
+          const url = URL.createObjectURL(blob); const link = document.createElement('a');
+          link.href = url; link.download = fileName; document.body.append(link); link.click(); link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          alert('บันทึกรูปแล้ว ส่งรูปนี้เข้า LINE ได้เลย');
+        } catch (error) { alert(`สร้างรูปไม่สำเร็จ: ${error.message}`); }
+        finally { button.disabled = false; button.textContent = label; }
+      }
       function renderAll() {
-        renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
+        renderFilterBar(); renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
       }
       function setView(view) {
         activeView = view;
@@ -773,7 +951,7 @@
         const dayTotals = new Set();
         for (let i = 0; i < 42; i++) {
           const date = new Date(start); date.setDate(start.getDate() + i);
-          const key = dateKey(date); const entries = data.entries[key] || [];
+          const key = dateKey(date); const entries = visible(data.entries[key] || []);
           const btn = document.createElement('button');
           btn.type = 'button'; btn.className = 'day';
           if (date.getMonth() !== shownMonth.getMonth()) btn.classList.add('outside');
@@ -785,7 +963,7 @@
           }
           const chips = document.createElement('span'); chips.className = 'chips';
           entries.slice(0, 2).forEach(entry => {
-            const chip = document.createElement('span'); chip.className = `chip${entry.done ? ' completed' : ''}`; chip.textContent = `${entry.done ? '✓ ' : ''}${entry.duty}`;
+            const chip = document.createElement('span'); chip.className = `chip${entry.done ? ' completed' : ''}`; chip.textContent = `${entry.done ? '✓ ' : ''}${entry.duty}${entry.assignee ? ' · ' + entry.assignee : ''}`;
             chip.style.backgroundColor = colorForDuty(entry.duty); chip.style.color = '#17211a'; chips.append(chip);
           });
           if (entries.length > 2) { const more = document.createElement('span'); more.className = 'chip more'; more.textContent = `+${entries.length - 2}`; chips.append(more); }
@@ -800,6 +978,7 @@
       function makeTaskRow(key, entry, index) {
         const row = document.createElement('div'); row.className = `task-row${entry.done ? ' completed' : ''}`;
         const name = document.createElement('span'); name.className = 'task-name'; name.textContent = entry.duty; name.style.backgroundColor = colorForDuty(entry.duty); row.append(name);
+        if (entry.assignee) { const who = document.createElement('span'); who.className = 'assignee-tag'; who.textContent = `👤 ${entry.assignee}`; row.append(who); }
         if (entry.note) { const note = document.createElement('span'); note.className = 'task-note'; note.textContent = entry.note; row.append(note); }
         const checkLabel = document.createElement('label'); checkLabel.className = 'task-check';
         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = Boolean(entry.done); check.setAttribute('aria-label', `ทำ ${entry.duty} เสร็จแล้ว`);
@@ -811,13 +990,13 @@
         return row;
       }
       function renderToday() {
-        const now = new Date(); const key = dateKey(now); const entries = data.entries[key] || [];
+        const now = new Date(); const key = dateKey(now); const allEntries = data.entries[key] || []; const entries = visible(allEntries);
         $('todayDate').textContent = formatDay(now);
         const container = $('todayEntries'); container.replaceChildren();
         if (!entries.length) {
           const empty = document.createElement('div'); empty.className = 'today-empty'; empty.textContent = 'วันนี้ยังไม่มีหน้าที่ที่บันทึกไว้'; container.append(empty); return;
         }
-        entries.forEach((entry, index) => container.append(makeTaskRow(key, entry, index)));
+        entries.forEach(entry => container.append(makeTaskRow(key, entry, allEntries.indexOf(entry))));
       }
       function renderWeek() {
         const start = weekStart(selectedDate); const end = new Date(start); end.setDate(start.getDate() + 6);
@@ -825,14 +1004,14 @@
         const list = $('weekList'); list.replaceChildren();
         for (let i = 0; i < 7; i++) {
           const date = new Date(start); date.setDate(start.getDate() + i);
-          const key = dateKey(date); const entries = data.entries[key] || [];
+          const key = dateKey(date); const allEntries = data.entries[key] || []; const entries = visible(allEntries);
           const day = document.createElement('section'); day.className = 'week-day';
           const head = document.createElement('div'); head.className = 'week-day-head';
           const dateLabel = document.createElement('span'); dateLabel.textContent = formatDay(date);
-          const add = document.createElement('button'); add.type = 'button'; add.textContent = entries.length ? 'แก้ไข' : '+ เพิ่ม'; add.addEventListener('click', () => { selectedDate = new Date(date); openDialog(key); });
+          const add = document.createElement('button'); add.type = 'button'; add.textContent = entries.length ? 'เพิ่ม / แก้ไข' : '+ เพิ่ม'; add.addEventListener('click', () => { selectedDate = new Date(date); openDialog(key); });
           head.append(dateLabel, add); day.append(head);
           if (!entries.length) { const empty = document.createElement('div'); empty.className = 'week-empty'; empty.textContent = 'ยังไม่มีหน้าที่'; day.append(empty); }
-          else entries.forEach((entry, index) => day.append(makeTaskRow(key, entry, index)));
+          else entries.forEach(entry => day.append(makeTaskRow(key, entry, allEntries.indexOf(entry))));
           list.append(day);
         }
       }
@@ -931,10 +1110,14 @@
         const sourceDate = new Date(year, month - 1, day); sourceDate.setDate(sourceDate.getDate() - 1);
         $('copyPrevious').textContent = `คัดลอกจาก ${new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' }).format(sourceDate)}`;
         const entries = data.entries[key] || [];
-        const entry = entries[0];
-        $('dialogTitle').textContent = entry ? 'แก้ไขหน้าที่' : 'เพิ่มหน้าที่';
+        editIndex = entries.length;
+        const entry = undefined;
+        $('dialogTitle').textContent = entries.length ? `เพิ่มหน้าที่ (มีแล้ว ${entries.length} รายการ)` : 'เพิ่มหน้าที่';
         $('noteInput').value = entry?.note || '';
         $('doneInput').checked = Boolean(entry?.done);
+        fillAssigneeSelect(entry?.assignee || '');
+        $('repeatSelect').value = 'none'; $('repeatRow').hidden = true;
+        $('repeatUntil').value = dateKey(new Date(year, month - 1 + 3, day)); $('repeatUntil').min = key;
         const select = $('dutySelect'); select.replaceChildren();
         if (!data.duties.length) {
           const option = document.createElement('option'); option.value = ''; option.textContent = 'เพิ่มหน้าที่จากรายการด้านข้างก่อน'; select.append(option); select.disabled = true;
@@ -944,10 +1127,45 @@
           if (entry && !data.duties.includes(entry.duty)) { const option = document.createElement('option'); option.value = entry.duty; option.textContent = entry.duty; select.append(option); }
           if (entry) select.value = entry.duty;
         }
-        $('deleteEntry').hidden = !entry;
+        $('deleteEntry').hidden = true;
         $('copyStatus').textContent = '';
+        renderDayEntries();
         $('overlay').classList.add('open');
         setTimeout(() => (select.disabled ? $('closeDialog') : select).focus(), 30);
+      }
+      let editIndex = 0;
+      function renderDayEntries() {
+        const entries = (selectedKey && data.entries[selectedKey]) || [];
+        const wrap = $('dayEntriesWrap'); const list = $('dayEntries'); list.replaceChildren();
+        wrap.hidden = !entries.length; if (!entries.length) return;
+        entries.forEach((item, index) => {
+          const button = document.createElement('button'); button.type = 'button';
+          button.className = `day-entry${index === editIndex ? ' active' : ''}`;
+          const pill = document.createElement('span'); pill.className = 'pill'; pill.style.backgroundColor = colorForDuty(item.duty);
+          pill.textContent = `${item.done ? '✓ ' : ''}${item.duty}`; button.append(pill);
+          if (item.assignee) { const who = document.createElement('span'); who.className = 'who'; who.textContent = `👤 ${item.assignee}`; button.append(who); }
+          if (item.note) { const note = document.createElement('span'); note.className = 'who'; note.textContent = `· ${item.note}`; button.append(note); }
+          button.addEventListener('click', () => editEntryAt(index));
+          list.append(button);
+        });
+        const addNew = document.createElement('button'); addNew.type = 'button'; addNew.className = 'add-new-entry';
+        addNew.textContent = '＋ เพิ่มหน้าที่ใหม่ในวันนี้'; addNew.addEventListener('click', () => editEntryAt(entries.length));
+        list.append(addNew);
+      }
+      function editEntryAt(index) {
+        const entries = data.entries[selectedKey] || []; const item = entries[index];
+        editIndex = index;
+        $('dialogTitle').textContent = item ? 'แก้ไขหน้าที่' : 'เพิ่มหน้าที่';
+        if (item) {
+          const select = $('dutySelect');
+          if (![...select.options].some(option => option.value === item.duty)) { const option = document.createElement('option'); option.value = item.duty; option.textContent = item.duty; select.append(option); }
+          select.value = item.duty;
+        }
+        $('noteInput').value = item?.note || ''; $('doneInput').checked = Boolean(item?.done);
+        fillAssigneeSelect(item?.assignee || '');
+        $('repeatSelect').value = 'none'; $('repeatRow').hidden = true;
+        $('deleteEntry').hidden = !item;
+        renderDayEntries();
       }
       function closeDialog() { $('overlay').classList.remove('open'); selectedKey = null; }
       $('prevMonth').addEventListener('click', () => { shownMonth.setMonth(shownMonth.getMonth() - 1); selectedDate = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1); renderAll(); });
@@ -961,6 +1179,20 @@
       $('applyTemplate').addEventListener('click', applyWeekTemplate);
       $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
       $('printSchedule').addEventListener('click', () => window.print());
+      $('shareImage').addEventListener('click', shareScheduleImage);
+      $('repeatSelect').addEventListener('change', () => { $('repeatRow').hidden = $('repeatSelect').value === 'none'; });
+      $('assigneeSelect').addEventListener('change', () => {
+        if ($('assigneeSelect').value !== '__add') return;
+        const name = addMemberPrompt(); fillAssigneeSelect(name); renderFilterBar();
+      });
+      $('myNameSelect').addEventListener('change', () => {
+        let value = $('myNameSelect').value;
+        if (value === '__add') value = addMemberPrompt();
+        myName = value; writePref(MY_NAME_KEY, myName);
+        if (!myName) { mineOnly = false; writePref(MINE_ONLY_KEY, '0'); }
+        renderAll();
+      });
+      $('mineToggle').addEventListener('click', () => { mineOnly = !mineOnly; writePref(MINE_ONLY_KEY, mineOnly ? '1' : '0'); renderAll(); });
       $('connectSupabase').addEventListener('click', connectSupabase);
       $('signUpSync').addEventListener('click', async () => {
         if (!supabaseClient) { syncStatus('เชื่อมต่อ Supabase ก่อนสมัครบัญชี'); return; }
@@ -1032,7 +1264,7 @@
           const backup = JSON.parse(await file.text());
           if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
           if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
-          data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {} };
+          data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [] };
           for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
           save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
         } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }
@@ -1046,13 +1278,25 @@
       $('entryForm').addEventListener('submit', (event) => {
         event.preventDefault(); if (!selectedKey || !$('dutySelect').value) return;
         const entries = data.entries[selectedKey] || [];
+        const assignee = $('assigneeSelect').value === '__add' ? '' : $('assigneeSelect').value;
         const entry = { duty: $('dutySelect').value, note: $('noteInput').value.trim(), done: $('doneInput').checked };
-        if (entries.length) entries[0] = entry; else entries.push(entry);
-        data.entries[selectedKey] = entries; save(); closeDialog(); renderAll();
+        if (assignee) entry.assignee = assignee;
+        if (editIndex < entries.length) entries[editIndex] = entry; else entries.push(entry);
+        data.entries[selectedKey] = entries;
+        const mode = $('repeatSelect').value; let added = 0;
+        if (mode !== 'none' && $('repeatUntil').value) {
+          for (const key of repeatDates(selectedKey, mode, $('repeatUntil').value)) {
+            const list = data.entries[key] || [];
+            if (list.some(item => item.duty === entry.duty && (item.assignee || '') === (entry.assignee || ''))) continue;
+            list.push({ ...entry, done: false }); data.entries[key] = list; added++;
+          }
+        }
+        save(); closeDialog(); renderAll();
+        if (mode !== 'none') alert(added ? `เพิ่มหน้าที่ซ้ำอีก ${added} วันแล้ว` : 'ไม่มีวันที่ต้องเพิ่มเพิ่มเติม');
       });
       $('deleteEntry').addEventListener('click', () => {
         if (!selectedKey) return;
-        const entries = data.entries[selectedKey] || []; entries.shift();
+        const entries = data.entries[selectedKey] || []; entries.splice(editIndex, 1);
         if (entries.length) data.entries[selectedKey] = entries; else delete data.entries[selectedKey];
         save(); closeDialog(); renderAll();
       });
