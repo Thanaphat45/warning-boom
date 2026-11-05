@@ -1,0 +1,4 @@
+.playwright-mcp/
+supabase/.temp/
+.env
+*.local
