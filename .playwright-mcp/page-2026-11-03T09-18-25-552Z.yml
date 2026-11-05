@@ -1,0 +1,193 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [aria-hidden] [ref=e5]: ✚
+        - generic [ref=e6]:
+          - generic [ref=e7]: ตารางหน้าที่ของฉัน
+          - generic [ref=e8]: บันทึกง่าย ดูได้ทั้งเดือน
+      - button "วันนี้" [ref=e9] [cursor=pointer]
+    - generic [ref=e11]:
+      - heading "ปฏิทินหน้าที่" [level=1] [ref=e12]
+      - paragraph [ref=e13]: แตะวันที่เพื่อเพิ่มหรือแก้ไขหน้าที่ของคุณ
+    - region [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - heading "หน้าที่วันนี้" [level=2] [ref=e17]
+          - paragraph [ref=e18]: วันอังคารที่ 3 พ.ย.
+        - button "＋ เพิ่มหน้าที่" [ref=e19] [cursor=pointer]
+      - generic [ref=e20]: วันนี้ยังไม่มีหน้าที่ที่บันทึกไว้
+    - generic [ref=e22]:
+      - region "ปฏิทินรายเดือน" [ref=e23]:
+        - tablist "รูปแบบการดูตาราง" [ref=e24]:
+          - tab "รายเดือน" [selected] [ref=e25] [cursor=pointer]
+          - tab "รายสัปดาห์" [ref=e26] [cursor=pointer]
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - heading "พฤศจิกายน 2569" [level=2] [ref=e29]
+            - generic [ref=e30]: พ.ศ. 2569 · เลือกวันที่เพื่อบันทึก
+          - generic [ref=e31]:
+            - button "เดือนก่อน" [ref=e32] [cursor=pointer]: ‹
+            - button "เดือนถัดไป" [ref=e33] [cursor=pointer]: ›
+        - generic [aria-hidden] [ref=e34]:
+          - generic [ref=e35]: อา
+          - generic [ref=e36]: จ
+          - generic [ref=e37]: อ
+          - generic [ref=e38]: พ
+          - generic [ref=e39]: พฤ
+          - generic [ref=e40]: ศ
+          - generic [ref=e41]: ส
+        - generic [ref=e42]:
+          - button "1 พฤศจิกายน 2569" [ref=e43] [cursor=pointer]:
+            - generic [ref=e44]: "1"
+            - generic [ref=e45]: พฤศจิกายน
+          - button "2 พฤศจิกายน 2569" [ref=e46] [cursor=pointer]:
+            - generic [ref=e47]: "2"
+          - button "3 พฤศจิกายน 2569" [ref=e48] [cursor=pointer]:
+            - generic [ref=e49]: "3"
+          - button "4 พฤศจิกายน 2569" [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]: "4"
+          - button "5 พฤศจิกายน 2569" [ref=e52] [cursor=pointer]:
+            - generic [ref=e53]: "5"
+          - button "6 พฤศจิกายน 2569" [ref=e54] [cursor=pointer]:
+            - generic [ref=e55]: "6"
+          - button "7 พฤศจิกายน 2569" [ref=e56] [cursor=pointer]:
+            - generic [ref=e57]: "7"
+          - button "8 พฤศจิกายน 2569" [ref=e58] [cursor=pointer]:
+            - generic [ref=e59]: "8"
+            - generic [ref=e60]: พฤศจิกายน
+          - button "9 พฤศจิกายน 2569" [ref=e61] [cursor=pointer]:
+            - generic [ref=e62]: "9"
+          - button "10 พฤศจิกายน 2569" [ref=e63] [cursor=pointer]:
+            - generic [ref=e64]: "10"
+          - button "11 พฤศจิกายน 2569" [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: "11"
+          - button "12 พฤศจิกายน 2569" [ref=e67] [cursor=pointer]:
+            - generic [ref=e68]: "12"
+          - button "13 พฤศจิกายน 2569" [ref=e69] [cursor=pointer]:
+            - generic [ref=e70]: "13"
+          - button "14 พฤศจิกายน 2569" [ref=e71] [cursor=pointer]:
+            - generic [ref=e72]: "14"
+          - button "15 พฤศจิกายน 2569" [ref=e73] [cursor=pointer]:
+            - generic [ref=e74]: "15"
+            - generic [ref=e75]: พฤศจิกายน
+          - button "16 พฤศจิกายน 2569" [ref=e76] [cursor=pointer]:
+            - generic [ref=e77]: "16"
+          - button "17 พฤศจิกายน 2569" [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: "17"
+          - button "18 พฤศจิกายน 2569" [ref=e80] [cursor=pointer]:
+            - generic [ref=e81]: "18"
+          - button "19 พฤศจิกายน 2569" [ref=e82] [cursor=pointer]:
+            - generic [ref=e83]: "19"
+          - button "20 พฤศจิกายน 2569" [ref=e84] [cursor=pointer]:
+            - generic [ref=e85]: "20"
+          - button "21 พฤศจิกายน 2569" [ref=e86] [cursor=pointer]:
+            - generic [ref=e87]: "21"
+          - button "22 พฤศจิกายน 2569" [ref=e88] [cursor=pointer]:
+            - generic [ref=e89]: "22"
+            - generic [ref=e90]: พฤศจิกายน
+          - button "23 พฤศจิกายน 2569" [ref=e91] [cursor=pointer]:
+            - generic [ref=e92]: "23"
+          - button "24 พฤศจิกายน 2569" [ref=e93] [cursor=pointer]:
+            - generic [ref=e94]: "24"
+          - button "25 พฤศจิกายน 2569" [ref=e95] [cursor=pointer]:
+            - generic [ref=e96]: "25"
+          - button "26 พฤศจิกายน 2569" [ref=e97] [cursor=pointer]:
+            - generic [ref=e98]: "26"
+          - button "27 พฤศจิกายน 2569" [ref=e99] [cursor=pointer]:
+            - generic [ref=e100]: "27"
+          - button "28 พฤศจิกายน 2569" [ref=e101] [cursor=pointer]:
+            - generic [ref=e102]: "28"
+          - button "29 พฤศจิกายน 2569" [ref=e103] [cursor=pointer]:
+            - generic [ref=e104]: "29"
+            - generic [ref=e105]: พฤศจิกายน
+          - button "30 พฤศจิกายน 2569" [ref=e106] [cursor=pointer]:
+            - generic [ref=e107]: "30"
+          - button "1 ธันวาคม 2569" [ref=e108] [cursor=pointer]:
+            - generic [ref=e109]: "1"
+            - generic [ref=e110]: ธันวาคม
+          - button "2 ธันวาคม 2569" [ref=e111] [cursor=pointer]:
+            - generic [ref=e112]: "2"
+          - button "3 ธันวาคม 2569" [ref=e113] [cursor=pointer]:
+            - generic [ref=e114]: "3"
+          - button "4 ธันวาคม 2569" [ref=e115] [cursor=pointer]:
+            - generic [ref=e116]: "4"
+          - button "5 ธันวาคม 2569" [ref=e117] [cursor=pointer]:
+            - generic [ref=e118]: "5"
+          - button "6 ธันวาคม 2569" [ref=e119] [cursor=pointer]:
+            - generic [ref=e120]: "6"
+            - generic [ref=e121]: ธันวาคม
+          - button "7 ธันวาคม 2569" [ref=e122] [cursor=pointer]:
+            - generic [ref=e123]: "7"
+          - button "8 ธันวาคม 2569" [ref=e124] [cursor=pointer]:
+            - generic [ref=e125]: "8"
+          - button "9 ธันวาคม 2569" [ref=e126] [cursor=pointer]:
+            - generic [ref=e127]: "9"
+          - button "10 ธันวาคม 2569" [ref=e128] [cursor=pointer]:
+            - generic [ref=e129]: "10"
+          - button "11 ธันวาคม 2569" [ref=e130] [cursor=pointer]:
+            - generic [ref=e131]: "11"
+          - button "12 ธันวาคม 2569" [ref=e132] [cursor=pointer]:
+            - generic [ref=e133]: "12"
+      - complementary [ref=e134]:
+        - heading "หน้าที่ที่ใช้บ่อย" [level=3] [ref=e135]
+        - paragraph [ref=e136]: เพิ่มรายการไว้เลือกตอนบันทึก ไม่ต้องพิมพ์ซ้ำทุกครั้ง
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - generic [ref=e139]: เวรเปิดประตู
+            - button "ลบ เวรเปิดประตู" [ref=e141] [cursor=pointer]: ×
+          - generic [ref=e142]:
+            - generic [ref=e143]: ห้องยา
+            - button "ลบ ห้องยา" [ref=e145] [cursor=pointer]: ×
+          - generic [ref=e146]:
+            - generic [ref=e147]: ห้องแผล
+            - button "ลบ ห้องแผล" [ref=e149] [cursor=pointer]: ×
+          - generic [ref=e150]:
+            - generic [ref=e151]: เยี่ยมบ้าน
+            - button "ลบ เยี่ยมบ้าน" [ref=e153] [cursor=pointer]: ×
+          - generic [ref=e154]:
+            - generic [ref=e155]: สต็อกเวชภัณฑ์
+            - button "ลบ สต็อกเวชภัณฑ์" [ref=e157] [cursor=pointer]: ×
+        - generic [ref=e158]:
+          - textbox "ชื่อหน้าที่ใหม่" [ref=e159]:
+            - /placeholder: เพิ่มหน้าที่ใหม่
+          - button "เพิ่มหน้าที่" [ref=e160] [cursor=pointer]: ＋
+        - generic [ref=e161]:
+          - heading "สรุปเวรเดือนนี้" [level=4] [ref=e162]
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - generic [ref=e165]: เวรเปิดประตู
+              - strong [ref=e166]: 0 วัน
+            - generic [ref=e167]:
+              - generic [ref=e168]: ห้องยา
+              - strong [ref=e169]: 0 วัน
+            - generic [ref=e170]:
+              - generic [ref=e171]: ห้องแผล
+              - strong [ref=e172]: 0 วัน
+            - generic [ref=e173]:
+              - generic [ref=e174]: เยี่ยมบ้าน
+              - strong [ref=e175]: 0 วัน
+            - generic [ref=e176]:
+              - generic [ref=e177]: สต็อกเวชภัณฑ์
+              - strong [ref=e178]: 0 วัน
+        - group [ref=e179]:
+          - generic "แม่แบบรายสัปดาห์" [ref=e180] [cursor=pointer]
+          - option "ยังไม่มีแม่แบบ" [selected]
+        - group [ref=e181]:
+          - generic "ใช้ร่วมกันหลายเครื่อง" [ref=e182] [cursor=pointer]
+        - group [ref=e183]:
+          - generic "แจ้งเตือนบนโทรศัพท์" [ref=e184] [cursor=pointer]
+          - option "คืนก่อนวันมีหน้าที่" [selected]
+          - option "เช้าวันที่มีหน้าที่"
+        - generic [ref=e185]:
+          - strong [ref=e186]: "0"
+          - generic [ref=e187]: วันที่มีหน้าที่ในเดือนนี้
+        - generic [ref=e188]: ข้อมูลบันทึกไว้ในเบราว์เซอร์นี้โดยอัตโนมัติ
+        - generic [ref=e189]:
+          - button "สำรองข้อมูล" [ref=e190] [cursor=pointer]
+          - button "นำเข้าข้อมูลสำรอง" [ref=e191] [cursor=pointer]
+        - button "พิมพ์ / บันทึกเป็น PDF" [ref=e192] [cursor=pointer]
+    - generic [ref=e193]: ตารางส่วนตัว • ข้อมูลอยู่ในอุปกรณ์ที่ใช้
+  - iframe [ref=e194]:
+    - button "Powered by Netlify — build your own site" [ref=f1e3] [cursor=pointer]:
+      - generic [ref=f1e13]: Powered by Netlify

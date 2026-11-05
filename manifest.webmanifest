@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "ตารางหน้าที่พยาบาล",
+  "short_name": "ตารางเวร",
+  "description": "ปฏิทินหน้าที่ประจำวันสำหรับพยาบาล",
+  "lang": "th",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#171b19",
+  "theme_color": "#171b19",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

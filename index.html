@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171b19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>ตารางหน้าที่ของฉัน</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #171b19;
+      --panel: #202622;
+      --panel-2: #272e29;
+      --line: #343d37;
+      --text: #f1f5f0;
+      --muted: #9da99f;
+      --green: #8dde83;
+      --green-strong: #b1f2a5;
+      --ink: #18331b;
+      --orange: #f3c27a;
+      --radius: 20px;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--text);
+      background: radial-gradient(ellipse at 8% 0%, #26342a 0, transparent 32rem), var(--bg);
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1120px, 100%); margin: 0 auto; padding: 28px 24px 48px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--green); color: var(--ink); font-size: 22px; }
+    .brand-name { font-size: 16px; font-weight: 750; letter-spacing: -.2px; }
+    .brand-sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .today-button, .primary-button, .secondary-button, .icon-button {
+      border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--panel-2);
+      min-height: 42px; padding: 0 15px; transition: .15s ease;
+    }
+    .today-button:hover, .secondary-button:hover, .icon-button:hover { border-color: #657267; background: #303a33; }
+    .primary-button { border-color: transparent; background: var(--green); color: var(--ink); font-weight: 750; }
+    .primary-button:hover { background: var(--green-strong); transform: translateY(-1px); }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 0 18px; }
+    h1 { margin: 0; font-size: clamp(25px, 4vw, 34px); letter-spacing: -.8px; }
+    .intro p { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
+    .today-card { margin-bottom: 18px; padding: 17px 19px; border: 1px solid #4a5a4a; border-radius: var(--radius); background: linear-gradient(115deg, #26352a, #202622 70%); }
+    .today-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .today-head h2 { margin: 0; font-size: 16px; }
+    .today-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .today-entries, .week-list { display: flex; flex-direction: column; gap: 8px; }
+    .today-entries { margin-top: 12px; }
+    .task-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #11171370; }
+    .task-row .task-name { min-width: 0; padding: 5px 9px; border-radius: 999px; color: #17211a; font-size: 11px; font-weight: 750; }
+    .task-row .task-note { min-width: 0; flex: 1; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .task-row.completed .task-name { opacity: .58; text-decoration: line-through; }
+    .task-row.completed .task-note { color: #78847a; }
+    .task-check { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; color: #c8d2c9; font-size: 11px; }
+    .task-check input, .checkbox-field input { accent-color: var(--green); width: 17px; height: 17px; }
+    .today-empty, .week-empty { padding: 11px; border-radius: 12px; color: var(--muted); background: #ffffff06; font-size: 12px; }
+    .view-tabs { display: flex; gap: 7px; margin-bottom: 14px; }
+    .view-tab { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--muted); font-size: 12px; }
+    .view-tab.active { border-color: #8dde8360; background: #8dde8314; color: var(--green-strong); }
+    .week-navigation { display: none; align-items: center; justify-content: space-between; gap: 8px; margin: -3px 0 12px; }
+    .week-navigation.visible { display: flex; }
+    .week-navigation strong { font-size: 14px; }
+    .week-day { padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: #ffffff04; }
+    .week-day-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+    .week-day-head button { border: 0; background: transparent; color: var(--green-strong); font-size: 11px; }
+    .week-list { display: none; }
+    .week-list.visible { display: flex; }
+    .template-panel { margin-top: 19px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .template-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+    .template-copy { margin: 6px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .template-controls { display: flex; flex-direction: column; gap: 8px; }
+    .template-controls input, .template-controls select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #171d19; color: var(--text); padding: 9px 10px; }
+    .template-actions { display: flex; gap: 7px; }
+    .template-actions button { flex: 1; min-height: 36px; padding: 5px 7px; font-size: 10px; }
+    .checkbox-field { display: flex; align-items: center; gap: 8px; color: #d6e0d7; font-size: 12px; }
+    .sync-panel { margin-top: 19px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .sync-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+    .sync-advanced { margin: 10px 0; }
+    .sync-advanced summary { font-size: 12px; font-weight: 500; color: var(--muted, #667); }
+    .sync-copy { margin: 7px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .sync-controls { display: flex; flex-direction: column; gap: 8px; }
+    .sync-controls input, .sync-controls select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #171d19; color: var(--text); padding: 9px 10px; }
+    .sync-controls input:focus, .sync-controls select:focus { border-color: var(--green); box-shadow: 0 0 0 3px #8dde8320; }
+    .field-label { color: #d6e0d7; font-size: 11px; }
+    .sync-controls button { min-height: 36px; padding: 6px 9px; font-size: 11px; }
+    .sync-status { min-height: 17px; margin: 2px 0 0; color: var(--green-strong); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+    .sync-account, .sync-workspace { display: none; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .sync-account.visible, .sync-workspace.visible { display: flex; }
+    .sync-workspace h4 { margin: 0; font-size: 12px; }
+    .sync-code { padding: 8px; border: 1px dashed #8dde8370; border-radius: 9px; color: var(--green-strong); font: 11px ui-monospace, monospace; overflow-wrap: anywhere; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 285px; gap: 18px; align-items: start; }
+    .calendar-card, .side-card { border: 1px solid var(--line); border-radius: var(--radius); background: color-mix(in srgb, var(--panel) 94%, transparent); box-shadow: 0 18px 45px #0002; }
+    .calendar-card { padding: 20px; }
+    .calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .month-title { min-width: 0; }
+    .month-title h2 { margin: 0; font-size: 20px; }
+    .month-title span { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .month-controls { display: flex; align-items: center; gap: 7px; }
+    .icon-button { width: 39px; min-height: 39px; padding: 0; font-size: 18px; }
+    .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .weekdays { margin-bottom: 7px; }
+    .weekdays span { text-align: center; padding: 8px 0; color: var(--muted); font-size: 12px; }
+    .day {
+      position: relative; min-width: 0; min-height: 106px; padding: 8px 7px; border: 1px solid transparent;
+      border-radius: 12px; background: transparent; text-align: left; color: var(--text); transition: .15s ease;
+    }
+    .day:hover { background: #ffffff09; border-color: #ffffff14; }
+    .day.outside { opacity: .36; }
+    .day.today .date-number { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--green); color: var(--ink); font-weight: 800; }
+    .date-number { display: inline-block; font-size: 13px; }
+    .day-label { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .chips { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 7px; }
+    .chip { display: block; max-width: 100%; padding: 4px 8px; overflow: hidden; border-radius: 999px; background: var(--green); color: var(--ink); font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .chip.more { background: #3a443d; color: #d9e4da; }
+    .chip.completed { opacity: .62; text-decoration: line-through; }
+    .mobile-note { display: none; }
+    .side-card { padding: 19px; }
+    .side-card h3 { margin: 0; font-size: 16px; }
+    .side-card .muted-copy { margin: 6px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .duty-list { display: flex; flex-direction: column; gap: 9px; }
+    .duty-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 6px 7px 6px 11px; border: 1px solid var(--line); border-radius: 12px; background: #ffffff04; }
+    .duty-row .label { display: inline-flex; align-items: center; min-width: 0; max-width: calc(100% - 36px); padding: 7px 11px; border-radius: 999px; color: #17211a; font-size: 12px; font-weight: 700; }
+    .duty-row .label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .remove-duty { width: 27px; height: 27px; border: 0; border-radius: 8px; color: #93a096; background: transparent; font-size: 17px; }
+    .remove-duty:hover { color: #ffb0a8; background: #ff6f6320; }
+    .add-duty { display: flex; gap: 7px; margin-top: 12px; }
+    .add-duty input, .field input, .field select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 11px; outline: none; background: #171d19; color: var(--text); padding: 10px 11px; }
+    .add-duty input:focus, .field input:focus, .field select:focus { border-color: var(--green); box-shadow: 0 0 0 3px #8dde8320; }
+    .add-duty .icon-button { flex: 0 0 42px; color: var(--green); font-size: 20px; }
+    .monthly-duty-summary { margin-top: 19px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .monthly-duty-summary h4 { margin: 0 0 11px; font-size: 13px; }
+    .monthly-duty-counts { display: flex; flex-direction: column; gap: 8px; }
+    .monthly-duty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .monthly-duty-row .label { min-width: 0; max-width: calc(100% - 52px); overflow: hidden; padding: 5px 9px; border-radius: 999px; color: #17211a; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .monthly-duty-row strong { min-width: 42px; color: var(--text); text-align: right; font-size: 12px; }
+    .monthly-duty-empty { margin: 0; color: var(--muted); font-size: 11px; }
+    .hint { margin-top: 15px; padding: 11px 12px; border-radius: 12px; color: #c5d0c6; background: #8dde8310; font-size: 11px; line-height: 1.5; }
+    .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
+    .backup-actions button { min-height: 38px; padding: 7px 9px; font-size: 11px; }
+    .print-button { width: 100%; margin-top: 8px; min-height: 38px; font-size: 11px; }
+    .summary { display: flex; align-items: center; gap: 9px; margin-top: 15px; color: var(--muted); font-size: 12px; }
+    .summary strong { color: var(--green-strong); font-size: 17px; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: none; place-items: center; padding: 18px; background: #080a08b8; backdrop-filter: blur(5px); }
+    .overlay.open { display: grid; }
+    .dialog { width: min(440px, 100%); border: 1px solid #465149; border-radius: 20px; background: #202622; box-shadow: 0 25px 70px #0009; padding: 22px; }
+    .dialog-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 18px; }
+    .dialog-head h2 { margin: 0; font-size: 19px; }
+    .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .close-button { width: 34px; height: 34px; border: 0; border-radius: 10px; color: #d3ded4; background: #ffffff0a; font-size: 20px; }
+    .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+    .field label { font-size: 12px; color: #d6e0d7; }
+    .field select { appearance: auto; }
+    .text-button { align-self: flex-start; border: 0; border-radius: 9px; padding: 7px 9px; color: var(--green-strong); background: #8dde8312; font-size: 12px; }
+    .text-button:hover { background: #8dde8324; }
+    .copy-status { min-height: 17px; margin: -6px 0 8px; color: var(--muted); font-size: 11px; }
+    .dialog-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 19px; }
+    .delete-button { border: 0; background: none; color: #ffaaa1; padding: 9px 0; }
+    .action-right { display: flex; gap: 8px; }
+    .empty-state { display: none; margin: 10px 0 3px; text-align: center; color: var(--muted); font-size: 12px; }
+    footer { padding: 18px 4px 0; color: #7f8b81; text-align: center; font-size: 11px; }
+    @media (max-width: 800px) {
+      .shell { padding: 20px 16px 34px; }
+      .layout { grid-template-columns: 1fr; }
+      .side-card { order: 2; }
+      .day { min-height: 92px; padding: 7px 4px; }
+      .calendar-card { padding: 15px 10px; }
+      .weekdays span { font-size: 11px; }
+      .chip { max-width: 100%; padding: 4px 6px; font-size: 9px; }
+      .day-label { font-size: 9px; }
+    }
+    @media (max-width: 430px) {
+      .shell { padding: 15px 10px 28px; }
+      header { margin-bottom: 23px; }
+      .brand-mark { width: 38px; height: 38px; }
+      .today-button { min-height: 38px; padding: 0 11px; font-size: 12px; }
+      .intro { align-items: start; }
+      .intro p { font-size: 12px; }
+      .calendar-card { padding: 13px 7px; border-radius: 16px; }
+      .calendar-head { padding: 0 3px; }
+      .month-title h2 { font-size: 17px; }
+      .month-title span { font-size: 10px; }
+      .icon-button { width: 35px; min-height: 35px; }
+      .weekdays span { font-size: 10px; padding: 6px 0; }
+      .day { min-height: 75px; border-radius: 8px; padding: 5px 2px; }
+      .date-number { font-size: 11px; }
+      .day.today .date-number { width: 22px; height: 22px; }
+      .day-label { margin-top: 2px; }
+      .chips { gap: 3px; margin-top: 4px; }
+      .chip { padding: 3px 4px; font-size: 8px; }
+      .mobile-note { display: block; color: var(--muted); font-size: 10px; padding: 8px 4px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+    @media print {
+      @page { size: A4 landscape; margin: 6mm; }
+      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #fff; --line: #d4d9d5; --text: #18211a; --muted: #55625a; }
+      body { min-height: auto; background: #fff; color: #18211a; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .shell { width: 100%; padding: 0; }
+      header { margin-bottom: 7px; }
+      .intro, .today-card { display: none !important; }
+      .brand-mark { border: 1px solid #9aa99b; }
+      .today-button, .month-controls, .week-navigation .icon-button, .view-tabs, .add-duty, .remove-duty, .summary, .hint, .backup-actions, .print-button, .template-panel, .sync-panel, footer, .mobile-note, .overlay { display: none !important; }
+      .layout { grid-template-columns: minmax(0, 1fr) 205px; gap: 7px; }
+      .calendar-card, .side-card { background: #fff; border-color: #c8d0ca; box-shadow: none; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; }
+      .calendar-card { padding: 7px; }
+      .calendar-head { margin-bottom: 5px; }
+      .month-title h2 { font-size: 15px; }
+      .month-title span { margin-top: 2px; font-size: 9px; }
+      .weekdays { margin-bottom: 1px; }
+      .weekdays span { padding: 3px 0; font-size: 9px; }
+      .day { min-height: 48px; padding: 3px; color: #18211a; border-radius: 5px; }
+      .chips { gap: 2px; margin-top: 2px; }
+      .chip { padding: 2px 4px; font-size: 8px; }
+      .day-label { display: none; }
+      .side-card { padding: 9px; }
+      .side-card h3 { font-size: 12px; }
+      .side-card .muted-copy { margin: 3px 0 7px; font-size: 9px; }
+      .duty-list { gap: 4px; }
+      .duty-row { min-height: 25px; padding: 3px 5px; }
+      .duty-row .label { padding: 4px 7px; font-size: 9px; }
+      .monthly-duty-summary { margin-top: 7px; padding-top: 7px; }
+      .monthly-duty-summary h4 { margin-bottom: 5px; font-size: 10px; }
+      .monthly-duty-counts { gap: 3px; }
+      .monthly-duty-row .label { padding: 3px 6px; font-size: 8px; }
+      .monthly-duty-row strong { font-size: 9px; }
+      .day.outside { opacity: .45; }
+      .chip, .duty-row .label, .monthly-duty-row .label { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .duty-row { border-color: #e0e5e0; }
+      .monthly-duty-summary { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✚</div>
+        <div><div class="brand-name">ตารางหน้าที่ของฉัน</div><div class="brand-sub">บันทึกง่าย ดูได้ทั้งเดือน</div></div>
+      </div>
+      <button class="today-button" id="todayButton">วันนี้</button>
+    </header>
+
+    <section class="intro">
+      <div><h1>ปฏิทินหน้าที่</h1><p>แตะวันที่เพื่อเพิ่มหรือแก้ไขหน้าที่ของคุณ</p></div>
+    </section>
+
+    <section class="today-card" aria-labelledby="todayHeading">
+      <div class="today-head">
+        <div><h2 id="todayHeading">หน้าที่วันนี้</h2><p id="todayDate"></p></div>
+        <button class="primary-button" type="button" id="addToday">＋ เพิ่มหน้าที่</button>
+      </div>
+      <div class="today-entries" id="todayEntries"></div>
+    </section>
+
+    <div class="layout">
+      <section class="calendar-card" aria-label="ปฏิทินรายเดือน">
+        <div class="view-tabs" role="tablist" aria-label="รูปแบบการดูตาราง">
+          <button class="view-tab active" type="button" data-view="month" role="tab" aria-selected="true">รายเดือน</button>
+          <button class="view-tab" type="button" data-view="week" role="tab" aria-selected="false">รายสัปดาห์</button>
+        </div>
+        <div class="calendar-head">
+          <div class="month-title"><h2 id="monthTitle"></h2><span id="monthSub"></span></div>
+          <div class="month-controls" id="monthControls">
+            <button class="icon-button" id="prevMonth" aria-label="เดือนก่อน">‹</button>
+            <button class="icon-button" id="nextMonth" aria-label="เดือนถัดไป">›</button>
+          </div>
+        </div>
+        <div class="week-navigation" id="weekNavigation">
+          <button class="icon-button" type="button" id="prevWeek" aria-label="สัปดาห์ก่อน">‹</button>
+          <strong id="weekTitle"></strong>
+          <button class="icon-button" type="button" id="nextWeek" aria-label="สัปดาห์ถัดไป">›</button>
+        </div>
+        <div class="weekdays" id="monthWeekdays" aria-hidden="true"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
+        <div class="days" id="daysGrid"></div>
+        <div class="week-list" id="weekList"></div>
+        <div class="mobile-note">แตะวันที่เพื่อเพิ่มหน้าที่</div>
+      </section>
+
+      <aside class="side-card">
+        <h3>หน้าที่ที่ใช้บ่อย</h3>
+        <p class="muted-copy">เพิ่มรายการไว้เลือกตอนบันทึก ไม่ต้องพิมพ์ซ้ำทุกครั้ง</p>
+        <div class="duty-list" id="dutyList"></div>
+        <form class="add-duty" id="addDutyForm">
+          <input id="newDuty" maxlength="32" placeholder="เพิ่มหน้าที่ใหม่" aria-label="ชื่อหน้าที่ใหม่">
+          <button class="icon-button" type="submit" aria-label="เพิ่มหน้าที่">＋</button>
+        </form>
+        <section class="monthly-duty-summary" aria-live="polite">
+          <h4>สรุปเวรเดือนนี้</h4>
+          <div class="monthly-duty-counts" id="monthlyDutyCounts"></div>
+        </section>
+        <details class="template-panel">
+          <summary>แม่แบบรายสัปดาห์</summary>
+          <p class="template-copy">บันทึกสัปดาห์ที่จัดไว้แล้ว แล้วนำไปใช้กับสัปดาห์อื่นได้</p>
+          <div class="template-controls">
+            <input id="templateName" maxlength="32" placeholder="ชื่อแม่แบบ เช่น ตารางปกติ">
+            <button class="secondary-button" type="button" id="saveTemplate">บันทึกสัปดาห์นี้เป็นแม่แบบ</button>
+            <select id="templateSelect" aria-label="เลือกแม่แบบ"></select>
+            <div class="template-actions">
+              <button class="secondary-button" type="button" id="applyTemplate">ใช้กับสัปดาห์นี้</button>
+              <button class="secondary-button" type="button" id="deleteTemplate">ลบแม่แบบ</button>
+            </div>
+            <p class="template-copy" id="templateStatus" aria-live="polite"></p>
+          </div>
+        </details>
+        <details class="sync-panel">
+          <summary>ใช้ร่วมกันหลายเครื่อง</summary>
+          <p class="sync-copy">ตั้งค่า Supabase จากบัญชีของคุณก่อน แต่ละคนเข้าสู่ระบบด้วยอีเมลของตัวเอง แล้วใช้รหัสเชิญเพื่อเปิดตารางเดียวกัน</p>
+          <details class="sync-advanced">
+          <summary>ตั้งค่าขั้นสูง (ฐานข้อมูล)</summary>
+          <div class="sync-controls">
+            <input id="supabaseUrl" type="url" placeholder="Project URL จาก Supabase" aria-label="Supabase Project URL">
+            <input id="supabaseAnonKey" type="password" placeholder="Publishable / anon key" aria-label="Supabase public anon key" autocomplete="off">
+            <input id="vapidPublicKey" type="password" placeholder="VAPID public key สำหรับแจ้งเตือน" aria-label="VAPID public key" autocomplete="off">
+            <button class="secondary-button" type="button" id="connectSupabase">เชื่อมต่อฐานข้อมูล</button>
+          </div>
+          </details>
+          <div class="sync-account" id="syncAccount">
+            <input id="syncEmail" type="email" placeholder="อีเมล" autocomplete="email">
+            <input id="syncPassword" type="password" placeholder="รหัสผ่านบัญชี Supabase" autocomplete="current-password">
+            <div class="template-actions">
+              <button class="secondary-button" type="button" id="signUpSync">สมัครบัญชี</button>
+              <button class="secondary-button" type="button" id="signInSync">เข้าสู่ระบบ</button>
+            </div>
+            <div class="template-actions">
+              <button class="secondary-button" type="button" id="forgotPassword">ลืมรหัสผ่าน</button>
+              <button class="secondary-button" type="button" id="resendConfirm" hidden>ส่งอีเมลยืนยันอีกครั้ง</button>
+            </div>
+            <button class="secondary-button" type="button" id="signOutSync">ออกจากระบบ</button>
+          </div>
+          <div class="sync-workspace" id="syncWorkspace">
+            <h4>ตารางที่แชร์</h4>
+            <input id="sharedScheduleName" maxlength="40" placeholder="ชื่อตารางที่แชร์">
+            <button class="secondary-button" type="button" id="createSharedSchedule">สร้างตารางและรหัสเชิญจากข้อมูลนี้</button>
+            <input id="sharedInviteCode" placeholder="วางรหัสเชิญจากเจ้าของตาราง">
+            <button class="secondary-button" type="button" id="joinSharedSchedule">เข้าร่วมตาราง</button>
+            <div class="sync-code" id="currentShareCode" hidden></div>
+            <button class="secondary-button" type="button" id="copyShareCode" hidden>คัดลอกรหัสเชิญ</button>
+          </div>
+          <p class="sync-status" id="syncStatus" aria-live="polite">ยังไม่ได้เชื่อมต่อ</p>
+        </details>
+        <details class="sync-panel">
+          <summary>แจ้งเตือนบนโทรศัพท์</summary>
+          <p class="sync-copy">ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
+          <div class="sync-controls">
+            <label class="field-label" for="reminderOffset">เตือนเมื่อ</label>
+            <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
+            <label class="field-label" for="reminderTime">เวลาในเขตเวลาของโทรศัพท์</label>
+            <input id="reminderTime" type="time" value="20:00">
+            <button class="secondary-button" type="button" id="enableNotifications">เปิด / บันทึกการแจ้งเตือน</button>
+            <div class="template-actions">
+              <button class="secondary-button" type="button" id="testNotification">ทดสอบแจ้งเตือน</button>
+              <button class="secondary-button" type="button" id="disableNotifications">ปิดการแจ้งเตือน</button>
+            </div>
+          </div>
+          <p class="sync-status" id="notificationStatus" aria-live="polite">ยังไม่ได้เปิดการแจ้งเตือน</p>
+        </details>
+        <div class="summary"><strong id="monthCount">0</strong><span>วันที่มีหน้าที่ในเดือนนี้</span></div>
+        <div class="hint">ข้อมูลบันทึกไว้ในเบราว์เซอร์นี้โดยอัตโนมัติ</div>
+        <div class="backup-actions">
+          <button class="secondary-button" type="button" id="exportBackup">สำรองข้อมูล</button>
+          <button class="secondary-button" type="button" id="importBackupButton">นำเข้าข้อมูลสำรอง</button>
+          <input type="file" id="importBackupFile" accept=".json,application/json" hidden>
+        </div>
+        <button class="secondary-button print-button" type="button" id="printSchedule">พิมพ์ / บันทึกเป็น PDF</button>
+      </aside>
+    </div>
+    <footer>ตารางส่วนตัว • ข้อมูลอยู่ในอุปกรณ์ที่ใช้</footer>
+  </main>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <form class="dialog" id="entryForm">
+      <div class="dialog-head">
+        <div><h2 id="dialogTitle">เพิ่มหน้าที่</h2><p id="selectedDate"></p></div>
+        <button class="close-button" type="button" id="closeDialog" aria-label="ปิด">×</button>
+      </div>
+      <div class="field">
+        <label for="dutySelect">เลือกหน้าที่</label>
+        <select id="dutySelect"></select>
+      </div>
+      <div class="field">
+        <label for="noteInput">หมายเหตุ (ถ้ามี)</label>
+        <input id="noteInput" maxlength="80" placeholder="เช่น เตรียมอุปกรณ์ก่อน 8 โมง">
+      </div>
+      <div class="field"><label class="checkbox-field"><input id="doneInput" type="checkbox"> เสร็จแล้ว</label></div>
+      <button class="text-button" type="button" id="copyPrevious">คัดลอกจากวันก่อน</button>
+      <div class="copy-status" id="copyStatus" aria-live="polite"></div>
+      <div class="dialog-actions">
+        <button class="delete-button" type="button" id="deleteEntry" hidden>ลบรายการนี้</button>
+        <div class="action-right">
+          <button class="secondary-button" type="button" id="cancelDialog">ยกเลิก</button>
+          <button class="primary-button" type="submit">บันทึก</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <script>
+    (() => {
+      const STORAGE_KEY = 'nursing-duty-calendar-v1';
+      const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
+      // Built-in project settings so users don't have to paste them. The anon/publishable key is safe to expose.
+      const DEFAULT_SUPABASE_URL = 'https://gksmldbkagkhljxkyseg.supabase.co';
+      const DEFAULT_SUPABASE_KEY = 'sb_publishable_hUkZK4KY9nJEXnbkCcTvXQ_59l1g5eh'; // TODO: paste the anon/publishable key from Supabase → Settings → API
+      const DEFAULT_VAPID_PUBLIC_KEY = 'BNiFUkEdbS06TES0n-658rchvp0LHEjk6W1FZ3L-okTqf36w8oX-yz76Plc-Ma4rIon7yCQBBlO2HZ0sTz3hxmg';
+      function translateAuthError(error) {
+        const code = error?.code || ''; const msg = (error?.message || '').toLowerCase();
+        if (code === 'invalid_credentials' || msg.includes('invalid login credentials')) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+        if (code === 'email_not_confirmed' || msg.includes('email not confirmed')) return 'ยังไม่ได้ยืนยันอีเมล กรุณากดลิงก์ในอีเมล หรือกด "ส่งอีเมลยืนยันอีกครั้ง"';
+        if (code === 'user_already_exists' || msg.includes('already registered')) return 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน';
+        if (code === 'weak_password' || msg.includes('password should be')) return 'รหัสผ่านง่ายเกินไป ใช้อย่างน้อย 8 ตัวอักษร';
+        if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || msg.includes('rate limit') || error?.status === 429) return 'ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่';
+        if (msg.includes('invalid api key') || msg.includes('no api key')) return 'คีย์ฐานข้อมูลไม่ถูกต้อง ตรวจที่ "ตั้งค่าขั้นสูง"';
+        if (msg.includes('failed to fetch') || msg.includes('network')) return 'เชื่อมต่ออินเทอร์เน็ตไม่ได้';
+        if (msg.includes('valid email') || code === 'email_address_invalid') return 'รูปแบบอีเมลไม่ถูกต้อง';
+        return error?.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+      }
+      const SHARED_SCHEDULE_KEY = 'nursing-duty-shared-schedule-v1';
+      const defaults = ['เวรเปิดประตู', 'ห้องยา', 'ห้องแผล', 'เยี่ยมบ้าน', 'สต็อกเวชภัณฑ์'];
+      let data = readData();
+      let supabaseClient = null;
+      let cloudScheduleId = null;
+      let syncChannel = null;
+      let syncSaveTimer = null;
+      let applyingRemoteData = false;
+      let serviceWorkerRegistration = null;
+      const today = new Date();
+      let shownMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      let selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      let activeView = 'month';
+      let selectedKey = null;
+      const $ = (id) => document.getElementById(id);
+      const thaiLong = new Intl.DateTimeFormat('th-TH', { dateStyle: 'long' });
+      const thaiMonth = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' });
+      const thaiMonthShort = new Intl.DateTimeFormat('th-TH', { month: 'long' });
+
+      function readData() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (stored && Array.isArray(stored.duties) && stored.entries && typeof stored.entries === 'object') {
+            stored.colors = stored.colors && typeof stored.colors === 'object' ? stored.colors : {};
+            stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
+            for (const entries of Object.values(stored.entries)) {
+              if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
+            }
+            return stored;
+          }
+        } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
+        return { duties: defaults.slice(), entries: {}, colors: {}, templates: {} };
+      }
+      function save() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+        catch (_) { alert('บันทึกข้อมูลในเบราว์เซอร์ไม่สำเร็จ'); }
+        if (supabaseClient && cloudScheduleId && !applyingRemoteData) queueCloudSave();
+      }
+      function validateBackup(value) {
+        if (!value || value.format !== 'nursing-duty-calendar' || value.version !== 1 ||
+            !Array.isArray(value.duties) || !value.duties.every(item => typeof item === 'string') ||
+            !value.entries || typeof value.entries !== 'object' || Array.isArray(value.entries)) return false;
+        for (const [key, entries] of Object.entries(value.entries)) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Array.isArray(entries) ||
+              !entries.every(entry => entry && typeof entry.duty === 'string' && typeof (entry.note || '') === 'string' &&
+                (entry.done === undefined || typeof entry.done === 'boolean'))) return false;
+        }
+        if (value.templates !== undefined) {
+          if (!value.templates || typeof value.templates !== 'object' || Array.isArray(value.templates)) return false;
+          for (const template of Object.values(value.templates)) {
+            if (!template || typeof template.name !== 'string' || !Array.isArray(template.days) || template.days.length !== 7 ||
+                !template.days.every(day => day === null || (day && typeof day.duty === 'string' && typeof (day.note || '') === 'string'))) return false;
+          }
+        }
+        return !value.colors || (typeof value.colors === 'object' && !Array.isArray(value.colors) &&
+          Object.values(value.colors).every(index => Number.isInteger(index) && index >= 0));
+      }
+      function syncStatus(message) { $('syncStatus').textContent = message; }
+      function normalizeScheduleData(value) {
+        if (!value || typeof value !== 'object') throw new Error('รูปแบบข้อมูลตารางไม่ถูกต้อง');
+        const normalized = {
+          duties: Array.isArray(value.duties) ? value.duties.filter(item => typeof item === 'string') : defaults.slice(),
+          entries: value.entries && typeof value.entries === 'object' ? value.entries : {},
+          colors: value.colors && typeof value.colors === 'object' ? value.colors : {},
+          templates: value.templates && typeof value.templates === 'object' ? value.templates : {}
+        };
+        for (const entries of Object.values(normalized.entries)) {
+          if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
+        }
+        return normalized;
+      }
+      function loadSupabaseLibrary() {
+        if (window.supabase?.createClient) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          script.onload = resolve; script.onerror = () => reject(new Error('โหลด Supabase client ไม่สำเร็จ'));
+          document.head.append(script);
+        });
+      }
+      function base64UrlToUint8Array(value) {
+        const padding = '='.repeat((4 - value.length % 4) % 4);
+        const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64); return Uint8Array.from(raw, character => character.charCodeAt(0));
+      }
+      async function enablePushNotifications() {
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (isIOS && !standalone) { $('notificationStatus').textContent = 'บน iPhone/iPad ให้เพิ่มเว็บลงหน้าจอโฮมแล้วเปิดจากไอคอนก่อน'; return; }
+        if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+          $('notificationStatus').textContent = 'เบราว์เซอร์นี้ยังใช้ Web Push ไม่ได้ ต้องเปิดเว็บผ่าน HTTPS บนเบราว์เซอร์ที่รองรับ'; return;
+        }
+        if (!supabaseClient || !cloudScheduleId) { $('notificationStatus').textContent = 'เชื่อมต่อ Supabase และเข้าร่วมตารางร่วมกันก่อนเปิดการแจ้งเตือน'; return; }
+        const publicKey = $('vapidPublicKey').value.trim();
+        if (!publicKey) { $('notificationStatus').textContent = 'ใส่ VAPID public key ในส่วนใช้ร่วมกันหลายเครื่องก่อน'; return; }
+        const permissionRequest = Notification.requestPermission();
+        const permission = await permissionRequest;
+        if (permission !== 'granted') { $('notificationStatus').textContent = 'ยังไม่ได้รับอนุญาตให้ส่งการแจ้งเตือน'; return; }
+        try {
+          serviceWorkerRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          await navigator.serviceWorker.ready;
+          const pushManager = serviceWorkerRegistration.pushManager;
+          let subscription = await pushManager.getSubscription();
+          if (!subscription) subscription = await pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(publicKey) });
+          const { data: auth, error: authError } = await supabaseClient.auth.getUser();
+          if (authError || !auth.user) throw new Error('เข้าสู่ระบบใหม่ก่อนบันทึกการแจ้งเตือน');
+          const row = {
+            user_id: auth.user.id, schedule_id: cloudScheduleId, endpoint: subscription.endpoint,
+            subscription: subscription.toJSON(), reminder_time: $('reminderTime').value || '20:00',
+            reminder_offset: $('reminderOffset').value,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
+            enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString()
+          };
+          const { error } = await supabaseClient.from('push_subscriptions').upsert(row, { onConflict: 'endpoint' });
+          if (error) throw error;
+          $('notificationStatus').textContent = `เปิดแจ้งเตือนแล้ว เวลา ${row.reminder_time} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
+        } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
+      }
+      async function disablePushNotifications() {
+        try {
+          serviceWorkerRegistration = serviceWorkerRegistration || await navigator.serviceWorker?.getRegistration('./');
+          const subscription = await serviceWorkerRegistration?.pushManager?.getSubscription();
+          if (subscription && supabaseClient) {
+            const { error } = await supabaseClient.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
+            if (error) throw error;
+            await subscription.unsubscribe();
+          }
+          $('notificationStatus').textContent = 'ปิดการแจ้งเตือนบนอุปกรณ์นี้แล้ว';
+        } catch (error) { $('notificationStatus').textContent = `ปิดการแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
+      }
+      async function testPushNotification() {
+        try {
+          if (Notification.permission !== 'granted') { $('notificationStatus').textContent = 'เปิดการแจ้งเตือนก่อนจึงจะทดสอบได้'; return; }
+          serviceWorkerRegistration = serviceWorkerRegistration || await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          await serviceWorkerRegistration.showNotification('ทดสอบแจ้งเตือน', { body: 'เว็บตารางหน้าที่พยาบาลส่งการแจ้งเตือนได้แล้ว', icon: new URL('./icon.svg', location.href).href });
+          $('notificationStatus').textContent = 'ส่งการแจ้งเตือนทดสอบแล้ว';
+        } catch (error) { $('notificationStatus').textContent = `ทดสอบไม่สำเร็จ: ${error.message}`; }
+      }
+      function showSyncSession(user) {
+        $('syncAccount').classList.toggle('visible', Boolean(supabaseClient));
+        $('syncWorkspace').classList.toggle('visible', Boolean(user));
+        $('signOutSync').style.display = user ? 'block' : 'none';
+        if (user) syncStatus(`เข้าสู่ระบบแล้ว: ${user.email || 'บัญชี Supabase'}`);
+      }
+      async function startRealtime(id) {
+        if (syncChannel) await supabaseClient.removeChannel(syncChannel);
+        syncChannel = supabaseClient.channel(`schedule-${id}`)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'schedule_data', filter: `schedule_id=eq.${id}` }, payload => {
+            if (syncSaveTimer || !payload.new?.payload) return;
+            try {
+              applyingRemoteData = true; data = normalizeScheduleData(payload.new.payload);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); applyingRemoteData = false;
+              renderDutyList(); renderAll(); syncStatus('รับการเปลี่ยนแปลงจากผู้ร่วมงานแล้ว');
+            } catch (error) { applyingRemoteData = false; syncStatus(`รับข้อมูลไม่สำเร็จ: ${error.message}`); }
+          })
+          .subscribe(status => { if (status === 'SUBSCRIBED') syncStatus('ซิงก์ตารางร่วมกันแล้ว'); });
+      }
+      function queueCloudSave() {
+        if (syncSaveTimer) clearTimeout(syncSaveTimer);
+        syncSaveTimer = setTimeout(async () => {
+          syncSaveTimer = null;
+          if (!supabaseClient || !cloudScheduleId) return;
+          const { error } = await supabaseClient.from('schedule_data').upsert({
+            schedule_id: cloudScheduleId, payload: data, updated_at: new Date().toISOString()
+          }, { onConflict: 'schedule_id' });
+          syncStatus(error ? `ซิงก์ไม่สำเร็จ: ${error.message}` : 'บันทึกลงตารางร่วมกันแล้ว');
+        }, 650);
+        syncStatus('กำลังบันทึกการเปลี่ยนแปลง…');
+      }
+      async function loadSharedSchedule(id) {
+        const { data: record, error } = await supabaseClient.from('schedule_data').select('payload').eq('schedule_id', id).single();
+        if (error) { cloudScheduleId = null; syncStatus(`เปิดตารางไม่สำเร็จ: ${error.message}`); return false; }
+        try { data = normalizeScheduleData(record.payload); }
+        catch (parseError) { syncStatus(`ข้อมูลตารางอ่านไม่ได้: ${parseError.message}`); return false; }
+        cloudScheduleId = id; localStorage.setItem(SHARED_SCHEDULE_KEY, id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        const { data: schedule } = await supabaseClient.from('shared_schedules').select('invite_code,name').eq('id', id).single();
+        if (schedule?.invite_code) {
+          $('currentShareCode').hidden = false; $('copyShareCode').hidden = false;
+          $('currentShareCode').textContent = `รหัสเชิญ: ${schedule.invite_code}`;
+          $('sharedScheduleName').value = schedule.name || '';
+        }
+        await startRealtime(id); renderDutyList(); renderAll();
+        syncStatus('เปิดตารางร่วมกันแล้ว'); return true;
+      }
+      async function connectSupabase() {
+        const url = $('supabaseUrl').value.trim(); const key = $('supabaseAnonKey').value.trim();
+        if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !key) { syncStatus('ใส่ Project URL และ public anon key ให้ครบ'); return; }
+        const vapidPublicKey = $('vapidPublicKey').value.trim();
+        localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({ url, key, vapidPublicKey }));
+        syncStatus('กำลังเชื่อมต่อ…');
+        try {
+          await loadSupabaseLibrary();
+          supabaseClient = window.supabase.createClient(url, key);
+          const { data: authData, error } = await supabaseClient.auth.getSession();
+          if (error) throw error;
+          showSyncSession(authData.session?.user || null);
+          if (!authData.session) syncStatus('เชื่อมต่อแล้ว เข้าสู่ระบบหรือสมัครบัญชีเพื่อเริ่มแชร์');
+          const storedId = localStorage.getItem(SHARED_SCHEDULE_KEY);
+          if (authData.session && storedId) await loadSharedSchedule(storedId);
+          supabaseClient.auth.onAuthStateChange((event, session) => {
+            showSyncSession(session?.user || null);
+            if (event === 'PASSWORD_RECOVERY') {
+              setTimeout(async () => {
+                const pw = prompt('ตั้งรหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)');
+                if (!pw) return;
+                if (pw.length < 8) { syncStatus('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
+                const { error: updateError } = await supabaseClient.auth.updateUser({ password: pw });
+                syncStatus(updateError ? `เปลี่ยนรหัสผ่านไม่สำเร็จ: ${translateAuthError(updateError)}` : 'เปลี่ยนรหัสผ่านแล้ว');
+              }, 0);
+            }
+            if (event === 'SIGNED_IN' && session && localStorage.getItem(SHARED_SCHEDULE_KEY)) loadSharedSchedule(localStorage.getItem(SHARED_SCHEDULE_KEY));
+          });
+        } catch (error) { supabaseClient = null; syncStatus(`เชื่อมต่อไม่สำเร็จ: ${translateAuthError(error)}`); }
+      }
+      async function createSharedSchedule() {
+        if (!supabaseClient) return;
+        const name = $('sharedScheduleName').value.trim() || 'ตารางหน้าที่พยาบาล';
+        if (!confirm('สร้างตารางร่วมกันและส่งข้อมูลในเบราว์เซอร์นี้ไปยังฐานข้อมูลออนไลน์หรือไม่?')) return;
+        syncStatus('กำลังสร้างตารางร่วมกัน…');
+        const { data: result, error } = await supabaseClient.rpc('create_shared_schedule', { p_name: name, p_payload: data });
+        if (error) { syncStatus(`สร้างตารางไม่สำเร็จ: ${error.message}`); return; }
+        const created = Array.isArray(result) ? result[0] : result;
+        if (!created?.schedule_id) { syncStatus('สร้างตารางแล้วแต่ไม่ได้รับรหัสตาราง'); return; }
+        cloudScheduleId = created.schedule_id; localStorage.setItem(SHARED_SCHEDULE_KEY, cloudScheduleId);
+        $('currentShareCode').hidden = false; $('copyShareCode').hidden = false;
+        $('currentShareCode').textContent = `รหัสเชิญ: ${created.invite_code}`;
+        await startRealtime(cloudScheduleId); syncStatus('สร้างตารางแล้ว ส่งรหัสเชิญให้ผู้ร่วมงาน');
+      }
+      async function joinSharedSchedule() {
+        if (!supabaseClient) return;
+        const inviteCode = $('sharedInviteCode').value.trim();
+        if (!inviteCode) { syncStatus('ใส่รหัสเชิญก่อนเข้าร่วม'); return; }
+        if (!confirm('เข้าร่วมตารางและแทนที่ข้อมูลในเบราว์เซอร์นี้ด้วยข้อมูลตารางร่วมกันหรือไม่?')) return;
+        const { data: id, error } = await supabaseClient.rpc('join_shared_schedule', { p_invite_code: inviteCode });
+        if (error) { syncStatus(`เข้าร่วมไม่สำเร็จ: ${error.message}`); return; }
+        $('sharedInviteCode').value = ''; await loadSharedSchedule(id);
+      }
+      function dateKey(date) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+      }
+      function weekStart(date) {
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        start.setDate(start.getDate() - start.getDay()); return start;
+      }
+      function formatDay(date) {
+        return new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'short' }).format(date);
+      }
+      function renderAll() {
+        renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
+      }
+      function setView(view) {
+        activeView = view;
+        $('daysGrid').style.display = view === 'month' ? 'grid' : 'none';
+        $('monthWeekdays').style.display = view === 'month' ? 'grid' : 'none';
+        $('weekList').classList.toggle('visible', view === 'week');
+        $('weekNavigation').classList.toggle('visible', view === 'week');
+        $('monthControls').style.display = view === 'month' ? 'flex' : 'none';
+        document.querySelectorAll('.view-tab').forEach(button => {
+          const active = button.dataset.view === view;
+          button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active));
+        });
+      }
+      function colorForDuty(duty) {
+        if (!Number.isInteger(data.colors[duty])) {
+          const used = new Set(Object.values(data.colors).filter(Number.isInteger));
+          let index = 0; while (used.has(index)) index++;
+          data.colors[duty] = index;
+          save();
+        }
+        const hue = (data.colors[duty] * 137.508 + 94) % 360;
+        return `hsl(${hue.toFixed(1)}, 70%, 72%)`;
+      }
+      function renderCalendar() {
+        $('monthTitle').textContent = thaiMonth.format(shownMonth);
+        $('monthSub').textContent = `พ.ศ. ${shownMonth.getFullYear() + 543} · เลือกวันที่เพื่อบันทึก`;
+        const first = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1);
+        const start = new Date(first); start.setDate(1 - first.getDay());
+        const grid = $('daysGrid'); grid.replaceChildren();
+        const dayTotals = new Set();
+        for (let i = 0; i < 42; i++) {
+          const date = new Date(start); date.setDate(start.getDate() + i);
+          const key = dateKey(date); const entries = data.entries[key] || [];
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'day';
+          if (date.getMonth() !== shownMonth.getMonth()) btn.classList.add('outside');
+          if (key === dateKey(today)) btn.classList.add('today');
+          btn.setAttribute('aria-label', `${thaiLong.format(date)}${entries.length ? ` มีหน้าที่ ${entries.map(e => e.duty).join(', ')}` : ''}`);
+          const num = document.createElement('span'); num.className = 'date-number'; num.textContent = date.getDate(); btn.append(num);
+          if (i % 7 === 0 || date.getDate() === 1) {
+            const label = document.createElement('span'); label.className = 'day-label'; label.textContent = thaiMonthShort.format(date); btn.append(label);
+          }
+          const chips = document.createElement('span'); chips.className = 'chips';
+          entries.slice(0, 2).forEach(entry => {
+            const chip = document.createElement('span'); chip.className = `chip${entry.done ? ' completed' : ''}`; chip.textContent = `${entry.done ? '✓ ' : ''}${entry.duty}`;
+            chip.style.backgroundColor = colorForDuty(entry.duty); chip.style.color = '#17211a'; chips.append(chip);
+          });
+          if (entries.length > 2) { const more = document.createElement('span'); more.className = 'chip more'; more.textContent = `+${entries.length - 2}`; chips.append(more); }
+          btn.append(chips);
+          btn.addEventListener('click', () => { selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); openDialog(key); });
+          grid.append(btn);
+          if (date.getMonth() === shownMonth.getMonth() && entries.length) dayTotals.add(key);
+        }
+        $('monthCount').textContent = dayTotals.size;
+        renderDutySummary();
+      }
+      function makeTaskRow(key, entry, index) {
+        const row = document.createElement('div'); row.className = `task-row${entry.done ? ' completed' : ''}`;
+        const name = document.createElement('span'); name.className = 'task-name'; name.textContent = entry.duty; name.style.backgroundColor = colorForDuty(entry.duty); row.append(name);
+        if (entry.note) { const note = document.createElement('span'); note.className = 'task-note'; note.textContent = entry.note; row.append(note); }
+        const checkLabel = document.createElement('label'); checkLabel.className = 'task-check';
+        const check = document.createElement('input'); check.type = 'checkbox'; check.checked = Boolean(entry.done); check.setAttribute('aria-label', `ทำ ${entry.duty} เสร็จแล้ว`);
+        check.addEventListener('change', () => {
+          const current = data.entries[key]?.[index]; if (!current) return;
+          current.done = check.checked; save(); renderAll();
+        });
+        checkLabel.append(check, document.createTextNode('เสร็จ')); row.append(checkLabel);
+        return row;
+      }
+      function renderToday() {
+        const now = new Date(); const key = dateKey(now); const entries = data.entries[key] || [];
+        $('todayDate').textContent = formatDay(now);
+        const container = $('todayEntries'); container.replaceChildren();
+        if (!entries.length) {
+          const empty = document.createElement('div'); empty.className = 'today-empty'; empty.textContent = 'วันนี้ยังไม่มีหน้าที่ที่บันทึกไว้'; container.append(empty); return;
+        }
+        entries.forEach((entry, index) => container.append(makeTaskRow(key, entry, index)));
+      }
+      function renderWeek() {
+        const start = weekStart(selectedDate); const end = new Date(start); end.setDate(start.getDate() + 6);
+        $('weekTitle').textContent = `${formatDay(start)} – ${formatDay(end)}`;
+        const list = $('weekList'); list.replaceChildren();
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(start); date.setDate(start.getDate() + i);
+          const key = dateKey(date); const entries = data.entries[key] || [];
+          const day = document.createElement('section'); day.className = 'week-day';
+          const head = document.createElement('div'); head.className = 'week-day-head';
+          const dateLabel = document.createElement('span'); dateLabel.textContent = formatDay(date);
+          const add = document.createElement('button'); add.type = 'button'; add.textContent = entries.length ? 'แก้ไข' : '+ เพิ่ม'; add.addEventListener('click', () => { selectedDate = new Date(date); openDialog(key); });
+          head.append(dateLabel, add); day.append(head);
+          if (!entries.length) { const empty = document.createElement('div'); empty.className = 'week-empty'; empty.textContent = 'ยังไม่มีหน้าที่'; day.append(empty); }
+          else entries.forEach((entry, index) => day.append(makeTaskRow(key, entry, index)));
+          list.append(day);
+        }
+      }
+      function renderTemplates() {
+        const select = $('templateSelect'); const previous = select.value; select.replaceChildren();
+        const templates = Object.entries(data.templates || {});
+        if (!templates.length) {
+          const option = document.createElement('option'); option.value = ''; option.textContent = 'ยังไม่มีแม่แบบ'; select.append(option); select.disabled = true;
+          $('applyTemplate').disabled = true; $('deleteTemplate').disabled = true; return;
+        }
+        select.disabled = false; $('applyTemplate').disabled = false; $('deleteTemplate').disabled = false;
+        templates.forEach(([id, template]) => { const option = document.createElement('option'); option.value = id; option.textContent = template.name; select.append(option); });
+        if (templates.some(([id]) => id === previous)) select.value = previous;
+      }
+      function saveWeekTemplate() {
+        const name = $('templateName').value.trim();
+        if (!name) { $('templateStatus').textContent = 'ตั้งชื่อแม่แบบก่อนบันทึก'; $('templateName').focus(); return; }
+        const start = weekStart(selectedDate);
+        const days = Array.from({ length: 7 }, (_, index) => {
+          const date = new Date(start); date.setDate(start.getDate() + index);
+          const entry = data.entries[dateKey(date)]?.[0];
+          return entry ? { duty: entry.duty, note: entry.note || '' } : null;
+        });
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        data.templates[id] = { name, days }; save(); renderTemplates(); $('templateSelect').value = id;
+        $('templateName').value = ''; $('templateStatus').textContent = `บันทึกแม่แบบ “${name}” แล้ว`;
+      }
+      function applyWeekTemplate() {
+        const id = $('templateSelect').value; const template = data.templates[id];
+        if (!template) return;
+        if (!confirm(`ใช้แม่แบบ “${template.name}” กับสัปดาห์นี้หรือไม่? ข้อมูลเดิมทั้งสัปดาห์จะถูกแทนที่`)) return;
+        const start = weekStart(selectedDate);
+        for (let index = 0; index < 7; index++) {
+          const date = new Date(start); date.setDate(start.getDate() + index); const key = dateKey(date);
+          const entry = template.days[index];
+          if (entry) data.entries[key] = [{ duty: entry.duty, note: entry.note || '', done: false }];
+          else delete data.entries[key];
+        }
+        save(); renderAll(); $('templateStatus').textContent = `ใช้แม่แบบ “${template.name}” แล้ว`;
+      }
+      function deleteWeekTemplate() {
+        const id = $('templateSelect').value; const template = data.templates[id];
+        if (!template || !confirm(`ลบแม่แบบ “${template.name}” หรือไม่?`)) return;
+        delete data.templates[id]; save(); renderTemplates(); $('templateStatus').textContent = 'ลบแม่แบบแล้ว';
+      }
+      function renderDutyList() {
+        const list = $('dutyList'); list.replaceChildren();
+        data.duties.forEach((duty, index) => {
+          const row = document.createElement('div'); row.className = 'duty-row';
+          const label = document.createElement('div'); label.className = 'label'; label.style.backgroundColor = colorForDuty(duty);
+          const name = document.createElement('span'); name.textContent = duty;
+          label.append(name);
+          const remove = document.createElement('button'); remove.className = 'remove-duty'; remove.type = 'button'; remove.textContent = '×'; remove.title = `ลบ ${duty}`; remove.setAttribute('aria-label', `ลบ ${duty}`);
+          remove.addEventListener('click', () => {
+            if (!confirm(`ลบ “${duty}” ออกจากรายการที่ใช้บ่อย? รายการในวันที่บันทึกไว้จะยังอยู่`)) return;
+            data.duties.splice(index, 1); save(); renderDutyList();
+          });
+          row.append(label, remove); list.append(row);
+        });
+        $('emptyState').style.display = data.duties.length ? 'none' : 'block';
+        renderDutySummary();
+      }
+      function renderDutySummary() {
+        const container = $('monthlyDutyCounts');
+        if (!container) return;
+        container.replaceChildren();
+        const counts = new Map();
+        const year = shownMonth.getFullYear(); const month = shownMonth.getMonth();
+        for (const [key, entries] of Object.entries(data.entries)) {
+          const [entryYear, entryMonth] = key.split('-').map(Number);
+          if (entryYear !== year || entryMonth !== month + 1) continue;
+          for (const entry of entries) counts.set(entry.duty, (counts.get(entry.duty) || 0) + 1);
+        }
+        const duties = [...data.duties];
+        for (const duty of counts.keys()) if (!duties.includes(duty)) duties.push(duty);
+        if (!duties.length) {
+          const empty = document.createElement('p'); empty.className = 'monthly-duty-empty'; empty.textContent = 'เพิ่มชื่อเวรเพื่อเริ่มสรุป'; container.append(empty); return;
+        }
+        duties.forEach(duty => {
+          const row = document.createElement('div'); row.className = 'monthly-duty-row';
+          const label = document.createElement('span'); label.className = 'label'; label.textContent = duty; label.style.backgroundColor = colorForDuty(duty);
+          const count = document.createElement('strong'); count.textContent = `${counts.get(duty) || 0} วัน`;
+          row.append(label, count); container.append(row);
+        });
+      }
+      function openDialog(key) {
+        selectedKey = key;
+        const [year, month, day] = key.split('-').map(Number);
+        $('selectedDate').textContent = thaiLong.format(new Date(year, month - 1, day));
+        const sourceDate = new Date(year, month - 1, day); sourceDate.setDate(sourceDate.getDate() - 1);
+        $('copyPrevious').textContent = `คัดลอกจาก ${new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' }).format(sourceDate)}`;
+        const entries = data.entries[key] || [];
+        const entry = entries[0];
+        $('dialogTitle').textContent = entry ? 'แก้ไขหน้าที่' : 'เพิ่มหน้าที่';
+        $('noteInput').value = entry?.note || '';
+        $('doneInput').checked = Boolean(entry?.done);
+        const select = $('dutySelect'); select.replaceChildren();
+        if (!data.duties.length) {
+          const option = document.createElement('option'); option.value = ''; option.textContent = 'เพิ่มหน้าที่จากรายการด้านข้างก่อน'; select.append(option); select.disabled = true;
+        } else {
+          select.disabled = false;
+          data.duties.forEach(duty => { const option = document.createElement('option'); option.value = duty; option.textContent = duty; select.append(option); });
+          if (entry && !data.duties.includes(entry.duty)) { const option = document.createElement('option'); option.value = entry.duty; option.textContent = entry.duty; select.append(option); }
+          if (entry) select.value = entry.duty;
+        }
+        $('deleteEntry').hidden = !entry;
+        $('copyStatus').textContent = '';
+        $('overlay').classList.add('open');
+        setTimeout(() => (select.disabled ? $('closeDialog') : select).focus(), 30);
+      }
+      function closeDialog() { $('overlay').classList.remove('open'); selectedKey = null; }
+      $('prevMonth').addEventListener('click', () => { shownMonth.setMonth(shownMonth.getMonth() - 1); selectedDate = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1); renderAll(); });
+      $('nextMonth').addEventListener('click', () => { shownMonth.setMonth(shownMonth.getMonth() + 1); selectedDate = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1); renderAll(); });
+      $('prevWeek').addEventListener('click', () => { selectedDate.setDate(selectedDate.getDate() - 7); shownMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1); renderAll(); });
+      $('nextWeek').addEventListener('click', () => { selectedDate.setDate(selectedDate.getDate() + 7); shownMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1); renderAll(); });
+      $('todayButton').addEventListener('click', () => { const now = new Date(); shownMonth = new Date(now.getFullYear(), now.getMonth(), 1); selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); renderAll(); });
+      $('addToday').addEventListener('click', () => { selectedDate = new Date(); shownMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1); openDialog(dateKey(selectedDate)); });
+      document.querySelectorAll('.view-tab').forEach(button => button.addEventListener('click', () => { setView(button.dataset.view); renderWeek(); }));
+      $('saveTemplate').addEventListener('click', saveWeekTemplate);
+      $('applyTemplate').addEventListener('click', applyWeekTemplate);
+      $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
+      $('printSchedule').addEventListener('click', () => window.print());
+      $('connectSupabase').addEventListener('click', connectSupabase);
+      $('signUpSync').addEventListener('click', async () => {
+        if (!supabaseClient) { syncStatus('เชื่อมต่อ Supabase ก่อนสมัครบัญชี'); return; }
+        const email = $('syncEmail').value.trim(); const password = $('syncPassword').value;
+        if (!email || password.length < 8) { syncStatus('ใส่อีเมลและรหัสผ่านอย่างน้อย 8 ตัวอักษร'); return; }
+        const { data: result, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.href } });
+        if (error) { syncStatus(`สมัครไม่สำเร็จ: ${translateAuthError(error)}`); return; }
+        if (!result.session) $('resendConfirm').hidden = false;
+        syncStatus(result.session ? 'สมัครและเข้าสู่ระบบแล้ว' : 'สมัครแล้ว ตรวจอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ');
+      });
+      $('signInSync').addEventListener('click', async () => {
+        if (!supabaseClient) { syncStatus('เชื่อมต่อ Supabase ก่อนเข้าสู่ระบบ'); return; }
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: $('syncEmail').value.trim(), password: $('syncPassword').value });
+        $('resendConfirm').hidden = !(error && (error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message)));
+        syncStatus(error ? `เข้าสู่ระบบไม่สำเร็จ: ${translateAuthError(error)}` : 'เข้าสู่ระบบแล้ว');
+      });
+      $('forgotPassword').addEventListener('click', async () => {
+        if (!supabaseClient) { syncStatus('เชื่อมต่อฐานข้อมูลก่อน'); return; }
+        const email = $('syncEmail').value.trim();
+        if (!email) { syncStatus('ใส่อีเมลก่อน แล้วกด "ลืมรหัสผ่าน" อีกครั้ง'); return; }
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] });
+        syncStatus(error ? `ส่งลิงก์ไม่สำเร็จ: ${translateAuthError(error)}` : 'ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว');
+      });
+      $('resendConfirm').addEventListener('click', async () => {
+        if (!supabaseClient) return;
+        const email = $('syncEmail').value.trim();
+        if (!email) { syncStatus('ใส่อีเมลก่อน'); return; }
+        const { error } = await supabaseClient.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.href.split('#')[0] } });
+        syncStatus(error ? `ส่งไม่สำเร็จ: ${translateAuthError(error)}` : 'ส่งอีเมลยืนยันใหม่แล้ว ตรวจกล่องจดหมาย (รวมถึงสแปม)');
+      });
+      $('signOutSync').addEventListener('click', async () => {
+        if (!supabaseClient) return;
+        await supabaseClient.auth.signOut(); cloudScheduleId = null; localStorage.removeItem(SHARED_SCHEDULE_KEY);
+        if (syncChannel) { await supabaseClient.removeChannel(syncChannel); syncChannel = null; }
+        $('currentShareCode').hidden = true; $('copyShareCode').hidden = true; syncStatus('ออกจากระบบแล้ว; ข้อมูลในเครื่องยังอยู่');
+      });
+      $('createSharedSchedule').addEventListener('click', createSharedSchedule);
+      $('joinSharedSchedule').addEventListener('click', joinSharedSchedule);
+      $('enableNotifications').addEventListener('click', enablePushNotifications);
+      $('disableNotifications').addEventListener('click', disablePushNotifications);
+      $('testNotification').addEventListener('click', testPushNotification);
+      $('copyShareCode').addEventListener('click', async () => {
+        const code = $('currentShareCode').textContent.replace(/^รหัสเชิญ:\s*/, '');
+        try { await navigator.clipboard.writeText(code); syncStatus('คัดลอกรหัสเชิญแล้ว'); }
+        catch (_) { syncStatus(`คัดลอกรหัสนี้ไปส่งให้ผู้ร่วมงาน: ${code}`); }
+      });
+      $('exportBackup').addEventListener('click', () => {
+        const backup = { format: 'nursing-duty-calendar', version: 1, exportedAt: new Date().toISOString(), ...data };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url;
+        link.download = `nursing-duty-backup-${dateKey(new Date())}.json`;
+        document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+      });
+      $('importBackupButton').addEventListener('click', () => $('importBackupFile').click());
+      $('importBackupFile').addEventListener('change', async (event) => {
+        const file = event.target.files?.[0]; event.target.value = '';
+        if (!file) return;
+        try {
+          const backup = JSON.parse(await file.text());
+          if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
+          if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
+          data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {} };
+          for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
+          save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
+        } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }
+      });
+      $('addDutyForm').addEventListener('submit', (event) => {
+        event.preventDefault(); const input = $('newDuty'); const duty = input.value.trim();
+        if (!duty) { input.focus(); return; }
+        if (data.duties.some(item => item.toLocaleLowerCase() === duty.toLocaleLowerCase())) { input.value = ''; input.placeholder = 'มีรายการนี้แล้ว'; return; }
+        data.duties.push(duty); input.value = ''; input.placeholder = 'เพิ่มหน้าที่ใหม่'; save(); renderDutyList();
+      });
+      $('entryForm').addEventListener('submit', (event) => {
+        event.preventDefault(); if (!selectedKey || !$('dutySelect').value) return;
+        const entries = data.entries[selectedKey] || [];
+        const entry = { duty: $('dutySelect').value, note: $('noteInput').value.trim(), done: $('doneInput').checked };
+        if (entries.length) entries[0] = entry; else entries.push(entry);
+        data.entries[selectedKey] = entries; save(); closeDialog(); renderAll();
+      });
+      $('deleteEntry').addEventListener('click', () => {
+        if (!selectedKey) return;
+        const entries = data.entries[selectedKey] || []; entries.shift();
+        if (entries.length) data.entries[selectedKey] = entries; else delete data.entries[selectedKey];
+        save(); closeDialog(); renderAll();
+      });
+      $('copyPrevious').addEventListener('click', () => {
+        if (!selectedKey) return;
+        const [year, month, day] = selectedKey.split('-').map(Number);
+        const previousDate = new Date(year, month - 1, day);
+        previousDate.setDate(previousDate.getDate() - 1);
+        const previousKey = dateKey(previousDate);
+        const previousEntry = data.entries[previousKey]?.[0];
+        if (!previousEntry) {
+          $('copyStatus').textContent = 'วันก่อนหน้ายังไม่มีหน้าที่ให้คัดลอก';
+          return;
+        }
+        const select = $('dutySelect');
+        if (![...select.options].some(option => option.value === previousEntry.duty)) {
+          const option = document.createElement('option'); option.value = previousEntry.duty; option.textContent = previousEntry.duty; select.append(option);
+        }
+        select.value = previousEntry.duty;
+        $('noteInput').value = previousEntry.note || '';
+        $('copyStatus').textContent = 'คัดลอกแล้ว ตรวจดูแล้วกดบันทึกได้เลย';
+      });
+      $('closeDialog').addEventListener('click', closeDialog);
+      $('cancelDialog').addEventListener('click', closeDialog);
+      $('overlay').addEventListener('click', event => { if (event.target === $('overlay')) closeDialog(); });
+      document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDialog(); });
+      // Keep all data in one simple local browser record.
+      const empty = document.createElement('div'); empty.id = 'emptyState'; empty.className = 'empty-state'; empty.textContent = 'ยังไม่มีรายการหน้าที่';
+      $('dutyList').after(empty);
+      renderDutyList(); renderAll();
+      try {
+        const config = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || 'null');
+        $('supabaseUrl').value = config?.url || DEFAULT_SUPABASE_URL;
+        $('supabaseAnonKey').value = config?.key || DEFAULT_SUPABASE_KEY;
+        $('vapidPublicKey').value = config?.vapidPublicKey || DEFAULT_VAPID_PUBLIC_KEY;
+      } catch (_) { /* Ignore an invalid local sync configuration. */ }
+      // Connect automatically so users only need email + password.
+      if ($('supabaseUrl').value && $('supabaseAnonKey').value) connectSupabase();
+      else $('supabaseUrl').closest('details').open = true;
+      if (window.isSecureContext && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+          .then(registration => { serviceWorkerRegistration = registration; })
+          .catch(() => { /* Push setup will show a user-facing error when requested. */ });
+      }
+    })();
+  </script>
+</body>
+</html>
