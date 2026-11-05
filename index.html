@@ -59,6 +59,7 @@
     .day-entry .who { color: var(--muted); }
     .day-entries-title { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
     .add-new-entry { justify-self: start; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 10px; background: none; color: var(--green-strong, #8dde83); font: inherit; font-size: 13px; cursor: pointer; }
+    .update-banner { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%); padding: 12px 18px; border: 0; border-radius: 999px; background: var(--green, #8dde83); color: #17211a; font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 30px #0008; cursor: pointer; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .status-pill { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
     .status-pill.ok { border-color: #8dde8366; background: #8dde8314; }
@@ -488,6 +489,19 @@
     (() => {
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
+      // Bump on every deploy so installed apps notice the new version.
+      const APP_VERSION = '2026-11-05.2';
+      async function checkForUpdate() {
+        try {
+          const response = await fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' });
+          const match = (await response.text()).match(/const APP_VERSION = '([^']+)'/);
+          if (!match || match[1] === APP_VERSION || document.getElementById('updateBanner')) return;
+          const banner = document.createElement('button'); banner.type = 'button'; banner.id = 'updateBanner';
+          banner.className = 'update-banner'; banner.textContent = '✨ มีเวอร์ชันใหม่ แตะเพื่ออัปเดต';
+          banner.addEventListener('click', () => location.replace(`./?v=${Date.now()}`));
+          document.body.append(banner);
+        } catch (_) { /* Offline: try again next time. */ }
+      }
       // Built-in project settings so users don't have to paste them. The anon/publishable key is safe to expose.
       const DEFAULT_SUPABASE_URL = 'https://gksmldbkagkhljxkyseg.supabase.co';
       const DEFAULT_SUPABASE_KEY = 'sb_publishable_hUkZK4KY9nJEXnbkCcTvXQ_59l1g5eh'; // TODO: paste the anon/publishable key from Supabase → Settings → API
@@ -1364,6 +1378,8 @@
         if (target) { target.open = true; target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       });
       updateStatusPill();
+      checkForUpdate();
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
       try { const lastEmail = localStorage.getItem('nursing-duty-last-email'); if (lastEmail && !$('syncEmail').value) $('syncEmail').value = lastEmail; } catch (_) {}
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
       try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset); } catch (_) {}
