@@ -490,7 +490,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-05.2';
+      const APP_VERSION = '2026-11-05.3';
       async function checkForUpdate() {
         try {
           const response = await fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' });
@@ -757,7 +757,7 @@
       async function loadSharedSchedule(id) {
         const { data: record, error } = await supabaseClient.from('schedule_data').select('payload').eq('schedule_id', id).single();
         if (error) { cloudScheduleId = null; syncStatus(`เปิดตารางไม่สำเร็จ: ${error.message}`); return false; }
-        try { data = normalizeScheduleData(record.payload); }
+        try { data = normalizeScheduleData(record.payload); if (accountName && !data.members.includes(accountName)) data.members.push(accountName); }
         catch (parseError) { syncStatus(`ข้อมูลตารางอ่านไม่ได้: ${parseError.message}`); return false; }
         cloudScheduleId = id; localStorage.setItem(SHARED_SCHEDULE_KEY, id);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -783,8 +783,7 @@
           if (error) throw error;
           showSyncSession(authData.session?.user || null);
           if (!authData.session) syncStatus('เชื่อมต่อแล้ว เข้าสู่ระบบหรือสมัครบัญชีเพื่อเริ่มแชร์');
-          const storedId = localStorage.getItem(SHARED_SCHEDULE_KEY);
-          if (authData.session && storedId) await loadSharedSchedule(storedId);
+          if (authData.session) await openAccountSchedule(authData.session.user);
           supabaseClient.auth.onAuthStateChange((event, session) => {
             showSyncSession(session?.user || null);
             if (event === 'PASSWORD_RECOVERY') {
@@ -796,9 +795,28 @@
                 syncStatus(updateError ? `เปลี่ยนรหัสผ่านไม่สำเร็จ: ${translateAuthError(updateError)}` : 'เปลี่ยนรหัสผ่านแล้ว');
               }, 0);
             }
-            if (event === 'SIGNED_IN' && session && localStorage.getItem(SHARED_SCHEDULE_KEY)) loadSharedSchedule(localStorage.getItem(SHARED_SCHEDULE_KEY));
+            if (event === 'SIGNED_IN' && session) openAccountSchedule(session.user);
           });
         } catch (error) { supabaseClient = null; syncStatus(`เชื่อมต่อไม่สำเร็จ: ${translateAuthError(error)}`); }
+      }
+      // Any device signed in to the same account opens that account's schedule automatically.
+      let openingSchedule = false;
+      async function openAccountSchedule(user) {
+        if (!supabaseClient || !user || openingSchedule) return;
+        let id = null; try { id = localStorage.getItem(SHARED_SCHEDULE_KEY); } catch (_) {}
+        if (id && id === cloudScheduleId) return;
+        openingSchedule = true;
+        try {
+          if (!id) {
+            const { data: rows, error } = await supabaseClient.from('schedule_members')
+              .select('schedule_id,role').eq('user_id', user.id);
+            if (error) throw error;
+            const pick = (rows || []).find(row => row.role === 'owner') || (rows || [])[0];
+            id = pick?.schedule_id || null;
+          }
+          if (id) await loadSharedSchedule(id);
+        } catch (error) { syncStatus(`โหลดตารางของบัญชีไม่สำเร็จ: ${error.message}`); }
+        finally { openingSchedule = false; }
       }
       async function createSharedSchedule(event, silent = false) {
         if (!supabaseClient) return false;
