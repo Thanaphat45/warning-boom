@@ -38,6 +38,9 @@ create table if not exists public.push_subscriptions (
     references public.schedule_members(schedule_id, user_id) on delete cascade
 );
 
+-- Name chosen in "ฉันคือ" on that device; reminders only include duties assigned to it (or unassigned).
+alter table public.push_subscriptions add column if not exists member_name text check (char_length(member_name) <= 30);
+
 create index if not exists push_subscriptions_due_idx
   on public.push_subscriptions (enabled, schedule_id)
   where enabled;

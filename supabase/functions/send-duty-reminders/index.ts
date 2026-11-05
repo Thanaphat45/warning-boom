@@ -10,6 +10,7 @@ type PushSubscriptionRow = {
   reminder_offset: 'day_before' | 'same_day'
   timezone: string
   last_sent_for_date: string | null
+  member_name: string | null
 }
 
 function localClock(now: Date, timezone: string) {
@@ -63,7 +64,7 @@ Deno.serve(async request => {
   })
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('push_subscriptions')
-    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date')
+    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name')
     .eq('enabled', true)
     .limit(500)
 
@@ -93,8 +94,13 @@ Deno.serve(async request => {
 
       const targetDate = row.reminder_offset === 'day_before' ? addDate(clock.date, 1) : clock.date
       if (row.last_sent_for_date === targetDate) continue
-      const schedule = scheduleById.get(row.schedule_id) as { entries?: Record<string, Array<{ duty: string; done?: boolean }>> } | undefined
-      const duties = (schedule?.entries?.[targetDate] ?? []).filter(entry => entry && !entry.done).map(entry => entry.duty)
+      const schedule = scheduleById.get(row.schedule_id) as { entries?: Record<string, Array<{ duty: string; done?: boolean; assignee?: string }>> } | undefined
+      // Only this device's own duties, plus duties nobody has been assigned to.
+      const me = row.member_name?.trim() || ''
+      const duties = (schedule?.entries?.[targetDate] ?? [])
+        .filter(entry => entry && !entry.done)
+        .filter(entry => !me || !entry.assignee || entry.assignee === me)
+        .map(entry => entry.assignee && entry.assignee !== me ? `${entry.duty} (${entry.assignee})` : entry.duty)
       if (!duties.length) continue
 
       const lead = row.reminder_offset === 'day_before' ? 'พรุ่งนี้' : 'วันนี้'

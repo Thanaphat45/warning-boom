@@ -44,6 +44,11 @@
     .repeat-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 8px; }
     .repeat-row[hidden] { display: none; }
     .share-button { width: 100%; margin-top: 8px; }
+    .duty-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+    .duty-picker[hidden] { display: none; }
+    .duty-pick { min-height: 38px; padding: 0 14px; border: 2px solid transparent; border-radius: 999px; color: #17211a; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; opacity: .45; }
+    .duty-pick[aria-pressed="true"] { opacity: 1; border-color: #eef3ee; box-shadow: 0 0 0 2px #17211a inset; }
+    .duty-pick[aria-pressed="true"]::before { content: '✓ '; }
     .day-entries { display: grid; gap: 6px; margin: 0 0 14px; }
     .day-entry { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #ffffff06; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .day-entry.active { border-color: #8dde83aa; background: #8dde8318; }
@@ -110,7 +115,8 @@
     .template-controls input, .template-controls select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #171d19; color: var(--text); padding: 9px 10px; }
     .template-actions { display: flex; gap: 7px; }
     .template-actions button { flex: 1; min-height: 36px; padding: 5px 7px; font-size: 10px; }
-    .checkbox-field { display: flex; align-items: center; gap: 8px; color: #d6e0d7; font-size: 12px; }
+    .field .checkbox-field { display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; width: auto; color: #d6e0d7; font-size: 14px; }
+    .field .checkbox-field input { width: 20px; height: 20px; flex: 0 0 auto; margin: 0; }
     .sync-panel { margin-top: 19px; padding-top: 15px; border-top: 1px solid var(--line); }
     .sync-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
     .sync-advanced { margin: 10px 0; }
@@ -171,6 +177,14 @@
     .monthly-duty-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .monthly-duty-row .label { min-width: 0; max-width: calc(100% - 52px); overflow: hidden; padding: 5px 9px; border-radius: 999px; color: #17211a; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
     .monthly-duty-row strong { min-width: 42px; color: var(--text); text-align: right; font-size: 12px; }
+    .member-summary-title { margin-top: 16px !important; }
+    .member-row { padding: 9px 0; border-top: 1px solid var(--line); }
+    .member-row:first-child { border-top: 0; }
+    .member-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+    .member-head strong { color: var(--green-strong, #8dde83); }
+    .member-bar { height: 6px; margin: 6px 0; border-radius: 999px; background: #ffffff10; overflow: hidden; }
+    .member-bar span { display: block; height: 100%; border-radius: inherit; background: var(--green, #8dde83); }
+    .member-detail { color: var(--muted); font-size: 12px; line-height: 1.5; }
     .summary-total { color: var(--green-strong, #8dde83); font-weight: 600; }
     .monthly-duty-empty { margin: 0; color: var(--muted); font-size: 13px; }
     .hint { margin-top: 15px; padding: 11px 12px; border-radius: 12px; color: #c5d0c6; background: #8dde8310; font-size: 13px; line-height: 1.5; }
@@ -179,9 +193,9 @@
     .print-button { width: 100%; margin-top: 8px; min-height: 38px; font-size: 11px; }
     .summary { display: flex; align-items: center; gap: 9px; margin-top: 15px; color: var(--muted); font-size: 12px; }
     .summary strong { color: var(--green-strong); font-size: 17px; }
-    .overlay { position: fixed; inset: 0; z-index: 5; display: none; place-items: center; padding: 18px; background: #080a08b8; backdrop-filter: blur(5px); }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: none; place-items: center; padding: 18px; overflow-y: auto; overscroll-behavior: contain; background: #080a08b8; backdrop-filter: blur(5px); }
     .overlay.open { display: grid; }
-    .dialog { width: min(440px, 100%); border: 1px solid #465149; border-radius: 20px; background: #202622; box-shadow: 0 25px 70px #0009; padding: 22px; }
+    .dialog { width: min(440px, 100%); border: 1px solid #465149; border-radius: 20px; background: #202622; box-shadow: 0 25px 70px #0009; padding: 22px; max-height: calc(100dvh - 36px); overflow-y: auto; }
     .dialog-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 18px; }
     .dialog-head h2 { margin: 0; font-size: 19px; }
     .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
@@ -333,6 +347,8 @@
         <section class="monthly-duty-summary" aria-live="polite">
           <h4>สรุปเวรเดือนนี้ <span class="summary-total" id="summaryTotal"></span></h4>
           <div class="monthly-duty-counts" id="monthlyDutyCounts"></div>
+          <h4 class="member-summary-title" id="memberSummaryTitle" hidden>แบ่งเวรรายคน</h4>
+          <div class="member-counts" id="memberCounts"></div>
         </section>
         <details class="template-panel">
           <summary>แม่แบบรายสัปดาห์</summary>
@@ -386,7 +402,7 @@
         </details>
         <details class="sync-panel">
           <summary>แจ้งเตือนบนโทรศัพท์</summary>
-          <p class="sync-copy">ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
+          <p class="sync-copy">เตือนเฉพาะเวรของชื่อที่เลือกใน "ฉันคือ" (และเวรที่ยังไม่ระบุผู้รับผิดชอบ) · ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
           <div class="sync-controls">
             <label class="field-label" for="reminderOffset">เตือนเมื่อ</label>
             <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
@@ -425,8 +441,9 @@
         <div class="day-entries" id="dayEntries"></div>
       </div>
       <div class="field">
-        <label for="dutySelect">เลือกหน้าที่</label>
+        <label for="dutySelect" id="dutyLabel">เลือกหน้าที่</label>
         <select id="dutySelect"></select>
+        <div class="duty-picker" id="dutyPicker" role="group" aria-label="เลือกหน้าที่ได้หลายอย่าง" hidden></div>
       </div>
       <div class="field">
         <label for="assigneeSelect">ผู้รับผิดชอบ</label>
@@ -456,6 +473,7 @@
       <div class="copy-status" id="copyStatus" aria-live="polite"></div>
       <div class="dialog-actions">
         <button class="delete-button" type="button" id="deleteEntry" hidden>ลบรายการนี้</button>
+        <button class="delete-button" type="button" id="deleteSeries" hidden>ลบทั้งชุดที่ทำซ้ำ (ตั้งแต่วันนี้)</button>
         <div class="action-right">
           <button class="secondary-button" type="button" id="cancelDialog">ยกเลิก</button>
           <button class="primary-button" type="submit">บันทึก</button>
@@ -596,7 +614,8 @@
             subscription: subscription.toJSON(), reminder_time: $('reminderTime').value || '20:00',
             reminder_offset: $('reminderOffset').value,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
-            enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString()
+            enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString(),
+            member_name: myName || null
           };
           const { error } = await supabaseClient.from('push_subscriptions').upsert(row, { onConflict: 'endpoint' });
           if (error) throw error;
@@ -635,7 +654,7 @@
           const subscription = await registration?.pushManager?.getSubscription();
           if (!subscription) { $('notificationStatus').textContent = 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน'; return; }
           const { data: updated, error } = await supabaseClient.from('push_subscriptions')
-            .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, last_sent_for_date: null, updated_at: new Date().toISOString() })
+            .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, member_name: myName || null, last_sent_for_date: null, updated_at: new Date().toISOString() })
             .eq('endpoint', subscription.endpoint).select('reminder_time');
           if (error) throw error;
           $('notificationStatus').textContent = updated?.length
@@ -1074,7 +1093,39 @@
         $('emptyState').style.display = data.duties.length ? 'none' : 'block';
         renderDutySummary();
       }
+      function renderMemberSummary() {
+        const container = $('memberCounts'); if (!container) return; container.replaceChildren();
+        const year = shownMonth.getFullYear(); const month = shownMonth.getMonth();
+        const perMember = new Map(); let unassigned = 0;
+        for (const [key, entries] of Object.entries(data.entries)) {
+          const [y, m] = key.split('-').map(Number); if (y !== year || m !== month + 1) continue;
+          for (const entry of entries) {
+            if (!entry.assignee) { unassigned++; continue; }
+            const item = perMember.get(entry.assignee) || { total: 0, duties: new Map() };
+            item.total++; item.duties.set(entry.duty, (item.duties.get(entry.duty) || 0) + 1);
+            perMember.set(entry.assignee, item);
+          }
+        }
+        for (const name of ensureMembers()) if (!perMember.has(name)) perMember.set(name, { total: 0, duties: new Map() });
+        $('memberSummaryTitle').hidden = !perMember.size;
+        if (!perMember.size) return;
+        const max = Math.max(1, ...[...perMember.values()].map(item => item.total));
+        [...perMember.entries()].sort((a, b) => b[1].total - a[1].total).forEach(([name, item]) => {
+          const row = document.createElement('div'); row.className = 'member-row';
+          const head = document.createElement('div'); head.className = 'member-head';
+          const label = document.createElement('span'); label.textContent = `👤 ${name}${name === myName ? ' (ฉัน)' : ''}`;
+          const count = document.createElement('strong'); count.textContent = `${item.total} เวร`;
+          head.append(label, count);
+          const bar = document.createElement('div'); bar.className = 'member-bar';
+          const fill = document.createElement('span'); fill.style.width = `${(item.total / max) * 100}%`; bar.append(fill);
+          const detail = document.createElement('div'); detail.className = 'member-detail';
+          detail.textContent = item.total ? [...item.duties.entries()].sort((a, b) => b[1] - a[1]).map(([duty, n]) => `${duty} ${n}`).join(' · ') : 'ยังไม่มีเวรเดือนนี้';
+          row.append(head, bar, detail); container.append(row);
+        });
+        if (unassigned) { const note = document.createElement('div'); note.className = 'member-detail'; note.textContent = `ยังไม่ระบุผู้รับผิดชอบ ${unassigned} เวร`; container.append(note); }
+      }
       function renderDutySummary() {
+        renderMemberSummary();
         const container = $('monthlyDutyCounts');
         if (!container) return;
         container.replaceChildren();
@@ -1127,13 +1178,33 @@
           if (entry && !data.duties.includes(entry.duty)) { const option = document.createElement('option'); option.value = entry.duty; option.textContent = entry.duty; select.append(option); }
           if (entry) select.value = entry.duty;
         }
-        $('deleteEntry').hidden = true;
+        $('deleteEntry').hidden = true; $('deleteSeries').hidden = true;
+        setPickerMode(true);
         $('copyStatus').textContent = '';
         renderDayEntries();
         $('overlay').classList.add('open');
         setTimeout(() => (select.disabled ? $('closeDialog') : select).focus(), 30);
       }
       let editIndex = 0;
+      // Add mode: pick several duties at once. Edit mode: the single select.
+      function setPickerMode(multi) {
+        const picker = $('dutyPicker'); const select = $('dutySelect');
+        picker.hidden = !multi || !data.duties.length; select.hidden = multi && data.duties.length > 0;
+        $('dutyLabel').textContent = multi ? 'เลือกหน้าที่ (เลือกได้หลายอย่าง)' : 'เลือกหน้าที่';
+        if (!multi) return;
+        picker.replaceChildren();
+        data.duties.forEach(duty => {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'duty-pick';
+          button.textContent = duty; button.dataset.duty = duty; button.style.backgroundColor = colorForDuty(duty);
+          button.setAttribute('aria-pressed', 'false');
+          button.addEventListener('click', () => button.setAttribute('aria-pressed', String(button.getAttribute('aria-pressed') !== 'true')));
+          picker.append(button);
+        });
+      }
+      function pickedDuties() {
+        if ($('dutyPicker').hidden) return $('dutySelect').value ? [$('dutySelect').value] : [];
+        return [...$('dutyPicker').querySelectorAll('.duty-pick[aria-pressed="true"]')].map(button => button.dataset.duty);
+      }
       function renderDayEntries() {
         const entries = (selectedKey && data.entries[selectedKey]) || [];
         const wrap = $('dayEntriesWrap'); const list = $('dayEntries'); list.replaceChildren();
@@ -1165,6 +1236,8 @@
         fillAssigneeSelect(item?.assignee || '');
         $('repeatSelect').value = 'none'; $('repeatRow').hidden = true;
         $('deleteEntry').hidden = !item;
+        $('deleteSeries').hidden = !item?.seriesId;
+        setPickerMode(!item);
         renderDayEntries();
       }
       function closeDialog() { $('overlay').classList.remove('open'); selectedKey = null; }
@@ -1180,6 +1253,16 @@
       $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
+      $('deleteSeries').addEventListener('click', () => {
+        const item = (data.entries[selectedKey] || [])[editIndex]; if (!item?.seriesId) return;
+        const keys = Object.keys(data.entries).filter(key => key >= selectedKey && data.entries[key].some(e => e.seriesId === item.seriesId));
+        if (!confirm(`ลบ "${item.duty}" ที่ทำซ้ำทั้งหมด ${keys.length} วัน ตั้งแต่วันนี้เป็นต้นไปหรือไม่?`)) return;
+        for (const key of keys) {
+          const rest = data.entries[key].filter(e => e.seriesId !== item.seriesId);
+          if (rest.length) data.entries[key] = rest; else delete data.entries[key];
+        }
+        save(); closeDialog(); renderAll();
+      });
       $('repeatSelect').addEventListener('change', () => { $('repeatRow').hidden = $('repeatSelect').value === 'none'; });
       $('assigneeSelect').addEventListener('change', () => {
         if ($('assigneeSelect').value !== '__add') return;
@@ -1191,6 +1274,7 @@
         myName = value; writePref(MY_NAME_KEY, myName);
         if (!myName) { mineOnly = false; writePref(MINE_ONLY_KEY, '0'); }
         renderAll();
+        onReminderSettingChange(); // keep this device's reminders tied to the chosen name
       });
       $('mineToggle').addEventListener('click', () => { mineOnly = !mineOnly; writePref(MINE_ONLY_KEY, mineOnly ? '1' : '0'); renderAll(); });
       $('connectSupabase').addEventListener('click', connectSupabase);
@@ -1276,23 +1360,36 @@
         data.duties.push(duty); input.value = ''; input.placeholder = 'เพิ่มหน้าที่ใหม่'; save(); renderDutyList();
       });
       $('entryForm').addEventListener('submit', (event) => {
-        event.preventDefault(); if (!selectedKey || !$('dutySelect').value) return;
+        event.preventDefault(); if (!selectedKey) return;
+        const duties = pickedDuties();
+        if (!duties.length) { $('copyStatus').textContent = 'เลือกหน้าที่อย่างน้อย 1 อย่าง'; return; }
         const entries = data.entries[selectedKey] || [];
         const assignee = $('assigneeSelect').value === '__add' ? '' : $('assigneeSelect').value;
-        const entry = { duty: $('dutySelect').value, note: $('noteInput').value.trim(), done: $('doneInput').checked };
-        if (assignee) entry.assignee = assignee;
-        if (editIndex < entries.length) entries[editIndex] = entry; else entries.push(entry);
-        data.entries[selectedKey] = entries;
-        const mode = $('repeatSelect').value; let added = 0;
-        if (mode !== 'none' && $('repeatUntil').value) {
-          for (const key of repeatDates(selectedKey, mode, $('repeatUntil').value)) {
-            const list = data.entries[key] || [];
-            if (list.some(item => item.duty === entry.duty && (item.assignee || '') === (entry.assignee || ''))) continue;
-            list.push({ ...entry, done: false }); data.entries[key] = list; added++;
+        const mode = $('repeatSelect').value; let added = 0; let skipped = 0;
+        const editing = editIndex < entries.length;
+        duties.forEach(duty => {
+          const entry = { duty, note: $('noteInput').value.trim(), done: $('doneInput').checked };
+          if (assignee) entry.assignee = assignee;
+          const previous = editing ? entries[editIndex] : null;
+          if (mode !== 'none') entry.seriesId = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          else if (previous?.seriesId) entry.seriesId = previous.seriesId;
+          if (editing) entries[editIndex] = entry;
+          else if (entries.some(item => item.duty === duty && (item.assignee || '') === (assignee || ''))) { skipped++; return; }
+          else entries.push(entry);
+          if (mode !== 'none' && $('repeatUntil').value) {
+            for (const key of repeatDates(selectedKey, mode, $('repeatUntil').value)) {
+              const list = data.entries[key] || [];
+              if (list.some(item => item.duty === entry.duty && (item.assignee || '') === (entry.assignee || ''))) continue;
+              list.push({ ...entry, done: false }); data.entries[key] = list; added++;
+            }
           }
-        }
+        });
+        if (entries.length) data.entries[selectedKey] = entries;
         save(); closeDialog(); renderAll();
-        if (mode !== 'none') alert(added ? `เพิ่มหน้าที่ซ้ำอีก ${added} วันแล้ว` : 'ไม่มีวันที่ต้องเพิ่มเพิ่มเติม');
+        const notes = [];
+        if (mode !== 'none') notes.push(added ? `เพิ่มหน้าที่ซ้ำอีก ${added} รายการแล้ว` : 'ไม่มีวันที่ต้องเพิ่มเพิ่มเติม');
+        if (skipped) notes.push(`ข้าม ${skipped} หน้าที่ที่มีอยู่แล้วในวันนี้`);
+        if (notes.length) alert(notes.join('\n'));
       });
       $('deleteEntry').addEventListener('click', () => {
         if (!selectedKey) return;
@@ -1316,6 +1413,7 @@
           const option = document.createElement('option'); option.value = previousEntry.duty; option.textContent = previousEntry.duty; select.append(option);
         }
         select.value = previousEntry.duty;
+        $('dutyPicker').querySelectorAll('.duty-pick').forEach(button => { if (button.dataset.duty === previousEntry.duty) button.setAttribute('aria-pressed', 'true'); });
         $('noteInput').value = previousEntry.note || '';
         $('copyStatus').textContent = 'คัดลอกแล้ว ตรวจดูแล้วกดบันทึกได้เลย';
       });
