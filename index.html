@@ -379,19 +379,19 @@
             <button class="secondary-button" type="button" id="connectSupabase">เชื่อมต่อฐานข้อมูล</button>
           </div>
           </details>
-          <div class="sync-account" id="syncAccount">
-            <input id="syncEmail" type="email" placeholder="อีเมล" autocomplete="email">
-            <input id="syncPassword" type="password" placeholder="รหัสผ่านบัญชี Supabase" autocomplete="current-password">
+          <form class="sync-account" id="syncAccount" autocomplete="on" action="#" method="post">
+            <input id="syncEmail" name="username" type="email" placeholder="อีเมล" autocomplete="username" inputmode="email">
+            <input id="syncPassword" name="password" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
             <div class="template-actions">
               <button class="secondary-button" type="button" id="signUpSync">สมัครบัญชี</button>
-              <button class="secondary-button" type="button" id="signInSync">เข้าสู่ระบบ</button>
+              <button class="secondary-button" type="submit" id="signInSync">เข้าสู่ระบบ</button>
             </div>
             <div class="template-actions">
               <button class="secondary-button" type="button" id="forgotPassword">ลืมรหัสผ่าน</button>
               <button class="secondary-button" type="button" id="resendConfirm" hidden>ส่งอีเมลยืนยันอีกครั้ง</button>
             </div>
             <button class="secondary-button" type="button" id="signOutSync">ออกจากระบบ</button>
-          </div>
+          </form>
           <div class="sync-workspace" id="syncWorkspace">
             <h4>ตารางที่แชร์</h4>
             <input id="sharedScheduleName" maxlength="40" placeholder="ชื่อตารางที่แชร์">
@@ -705,6 +705,9 @@
         $('syncAccount').classList.toggle('visible', Boolean(supabaseClient));
         $('syncWorkspace').classList.toggle('visible', Boolean(user));
         $('signOutSync').style.display = user ? 'block' : 'none';
+        ['syncEmail', 'syncPassword'].forEach(id => { $(id).hidden = Boolean(user); });
+        $('signInSync').closest('.template-actions').hidden = Boolean(user);
+        $('forgotPassword').closest('.template-actions').hidden = Boolean(user);
         if (user) syncStatus(`เข้าสู่ระบบแล้ว: ${user.email || 'บัญชี Supabase'}`);
       }
       async function startRealtime(id) {
@@ -756,7 +759,7 @@
         syncStatus('กำลังเชื่อมต่อ…');
         try {
           await loadSupabaseLibrary();
-          supabaseClient = window.supabase.createClient(url, key);
+          supabaseClient = window.supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
           const { data: authData, error } = await supabaseClient.auth.getSession();
           if (error) throw error;
           showSyncSession(authData.session?.user || null);
@@ -1307,9 +1310,19 @@
         if (!result.session) $('resendConfirm').hidden = false;
         syncStatus(result.session ? 'สมัครและเข้าสู่ระบบแล้ว' : 'สมัครแล้ว ตรวจอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ');
       });
-      $('signInSync').addEventListener('click', async () => {
+      // A real <form> submit lets the browser / iPhone Keychain offer to save and autofill the password.
+      $('syncAccount').addEventListener('submit', async (event) => {
+        event.preventDefault();
         if (!supabaseClient) { syncStatus('เชื่อมต่อ Supabase ก่อนเข้าสู่ระบบ'); return; }
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: $('syncEmail').value.trim(), password: $('syncPassword').value });
+        const email = $('syncEmail').value.trim(); const password = $('syncPassword').value;
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (!error) {
+          try { localStorage.setItem('nursing-duty-last-email', email); } catch (_) {}
+          if (window.PasswordCredential && navigator.credentials?.store) {
+            try { await navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })); } catch (_) {}
+          }
+          $('syncPassword').value = '';
+        }
         $('resendConfirm').hidden = !(error && (error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message)));
         syncStatus(error ? `เข้าสู่ระบบไม่สำเร็จ: ${translateAuthError(error)}` : 'เข้าสู่ระบบแล้ว');
       });
@@ -1345,6 +1358,7 @@
         if (target) { target.open = true; target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       });
       updateStatusPill();
+      try { const lastEmail = localStorage.getItem('nursing-duty-last-email'); if (lastEmail && !$('syncEmail').value) $('syncEmail').value = lastEmail; } catch (_) {}
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
       try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset); } catch (_) {}
       $('copyShareCode').addEventListener('click', async () => {
