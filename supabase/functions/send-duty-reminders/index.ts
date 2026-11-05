@@ -51,7 +51,13 @@ Deno.serve(async request => {
     return json({ error: 'Server notification secrets are incomplete' }, 500)
   }
 
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+  try {
+    const subject = vapidSubject.trim()
+    webpush.setVapidDetails(/^(mailto:|https:)/.test(subject) ? subject : `mailto:${subject}`, vapidPublicKey.trim(), vapidPrivateKey.trim())
+  } catch (vapidError) {
+    // Message names the bad field (e.g. subject/key length) without revealing secret values.
+    return json({ error: `Invalid VAPID settings: ${(vapidError as Error).message}` }, 500)
+  }
   const supabase = createClient(projectUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   })

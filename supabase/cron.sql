@@ -4,6 +4,11 @@
 --   nurse_reminder_cron_secret = the same random value as the Edge Function CRON_SECRET
 -- Deploy send-duty-reminders with --no-verify-jwt; it checks x-cron-secret itself.
 
+-- Enable required extensions (safe to re-run).
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+create extension if not exists supabase_vault;
+
 select cron.schedule(
   'send-nursing-duty-reminders',
   '* * * * *',
