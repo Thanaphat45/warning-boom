@@ -490,7 +490,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-05.3';
+      const APP_VERSION = '2026-11-05.4';
       async function checkForUpdate() {
         try {
           const response = await fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' });
@@ -642,7 +642,8 @@
           const { error } = await supabaseClient.from('push_subscriptions').upsert(row, { onConflict: 'endpoint' });
           if (error) throw error;
           saveReminderPref();
-          $('notificationStatus').textContent = `เปิดแจ้งเตือนแล้ว เวลา ${row.reminder_time} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
+          const devices = await syncAccountReminder().catch(() => 1);
+          $('notificationStatus').textContent = `เปิดแจ้งเตือนแล้ว (${devices} เครื่องในบัญชีนี้) เวลา ${row.reminder_time} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
         } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
       }
       const REMINDER_PREF_KEY = 'nursing-duty-reminder-pref-v1';
@@ -659,28 +660,44 @@
           if (!supabaseClient || !('serviceWorker' in navigator)) return;
           const registration = serviceWorkerRegistration || await navigator.serviceWorker.getRegistration('./');
           const subscription = await registration?.pushManager?.getSubscription();
-          if (!subscription) return;
-          const { data: row } = await supabaseClient.from('push_subscriptions')
-            .select('reminder_time,reminder_offset,enabled').eq('endpoint', subscription.endpoint).maybeSingle();
+          let row = null;
+          if (subscription) {
+            ({ data: row } = await supabaseClient.from('push_subscriptions')
+              .select('reminder_time,reminder_offset,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
+          }
+          if (!row && currentUser) {
+            // This device isn't registered yet: use the same time as the account's other devices.
+            const { data: rows } = await supabaseClient.from('push_subscriptions')
+              .select('reminder_time,reminder_offset').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
+            const shared = rows?.[0];
+            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset); saveReminderPref(); }
+            if ('Notification' in window && Notification.permission === 'granted') { await enablePushNotifications(); return; }
+            if (shared) $('notificationStatus').textContent = `บัญชีนี้เตือนเวลา ${String(shared.reminder_time).slice(0, 5)} · กด "เปิด / บันทึกการแจ้งเตือน" เพื่อรับแจ้งเตือนบนเครื่องนี้ด้วย`;
+            return;
+          }
           if (!row) return;
           applyReminderPref(row.reminder_time, row.reminder_offset); saveReminderPref();
           if (row.enabled) $('notificationStatus').textContent = `เปิดแจ้งเตือนอยู่ เวลา ${String(row.reminder_time).slice(0, 5)} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
         } catch (_) { /* Keep local values if the server can't be reached. */ }
       }
-      // Changing time/offset saves immediately when this device is already subscribed.
+      // Every device signed in to the same account shares one reminder time.
+      async function syncAccountReminder() {
+        if (!supabaseClient || !currentUser) return 0;
+        const { data: updated, error } = await supabaseClient.from('push_subscriptions')
+          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, member_name: myName || null, last_sent_for_date: null, updated_at: new Date().toISOString() })
+          .eq('user_id', currentUser.id).select('id');
+        if (error) throw error;
+        return updated?.length || 0;
+      }
+      // Changing time/offset saves immediately for all of the account's devices.
       async function onReminderSettingChange() {
         saveReminderPref();
         try {
           if (!supabaseClient || !('serviceWorker' in navigator)) { $('notificationStatus').textContent = 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน'; return; }
-          const registration = serviceWorkerRegistration || await navigator.serviceWorker.getRegistration('./');
-          const subscription = await registration?.pushManager?.getSubscription();
-          if (!subscription) { $('notificationStatus').textContent = 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน'; return; }
-          const { data: updated, error } = await supabaseClient.from('push_subscriptions')
-            .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, member_name: myName || null, last_sent_for_date: null, updated_at: new Date().toISOString() })
-            .eq('endpoint', subscription.endpoint).select('reminder_time');
-          if (error) throw error;
-          $('notificationStatus').textContent = updated?.length
-            ? `บันทึกเวลาแจ้งเตือนใหม่แล้ว: ${$('reminderTime').value} (${$('reminderOffset').value === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`
+          if (!currentUser) { $('notificationStatus').textContent = 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน'; return; }
+          const updated = await syncAccountReminder();
+          $('notificationStatus').textContent = updated
+            ? `บันทึกเวลาแจ้งเตือนใหม่แล้ว: ${$('reminderTime').value} (${$('reminderOffset').value === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'}) · ใช้กับ ${updated} เครื่องในบัญชีนี้`
             : 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน';
         } catch (error) { $('notificationStatus').textContent = `บันทึกเวลาไม่สำเร็จ: ${error.message}`; }
       }
