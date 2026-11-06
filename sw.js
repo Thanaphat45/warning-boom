@@ -1,7 +1,7 @@
 // Offline support: the app shell is cached so the schedule opens without internet.
 // Pages use network-first (always fresh when online), libraries/holidays use stale-while-revalidate.
-const CACHE = 'duty-app-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './holidays.json'];
+const CACHE = 'duty-app-v2';
+const SHELL = ['./', './index.html', './app.js', './styles.css', './manifest.webmanifest', './icon.svg', './holidays.json'];
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 
 self.addEventListener('install', event => {
@@ -21,6 +21,21 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
+
+  // App code and styles (versioned with ?v=): network first, cached copy when offline.
+  if (sameOrigin && /\/(app\.js|styles\.css)$/.test(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const response = await fetch(request);
+        if (response.ok) cache.put(url.pathname.endsWith('.js') ? './app.js' : './styles.css', response.clone());
+        return response;
+      } catch (_) {
+        return (await cache.match(request)) || (await cache.match(url.pathname.endsWith('.js') ? './app.js' : './styles.css')) || Response.error();
+      }
+    })());
+    return;
+  }
 
   // App page: try the network first (3.5 s), fall back to the cached copy when offline.
   if (request.mode === 'navigate' || (sameOrigin && url.pathname.endsWith('/index.html'))) {
