@@ -60,6 +60,8 @@
     .day-entries-title { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
     .add-new-entry { justify-self: start; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 10px; background: none; color: var(--green-strong, #8dde83); font: inherit; font-size: 13px; cursor: pointer; }
     .update-banner { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%); padding: 12px 18px; border: 0; border-radius: 999px; background: var(--green, #8dde83); color: #17211a; font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 30px #0008; cursor: pointer; }
+    .sync-controls .morning-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; margin-top: 8px; color: var(--text); font-size: 14px; text-align: left; }
+    .sync-controls .morning-toggle input { flex: 0 0 auto; width: 20px; min-width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--green); }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .status-pill { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
     .status-pill.ok { border-color: #8dde8366; background: #8dde8314; }
@@ -412,6 +414,8 @@
             <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
             <label class="field-label" for="reminderTime">เวลาในเขตเวลาของโทรศัพท์</label>
             <input id="reminderTime" type="time" value="20:00">
+            <label class="checkbox-field morning-toggle"><input id="morningOn" type="checkbox" checked> ☀️ เตือนตอนเช้าว่าวันนี้มีหน้าที่อะไร</label>
+            <input id="morningTime" type="time" value="07:30" aria-label="เวลาเตือนตอนเช้า">
             <button class="secondary-button" type="button" id="enableNotifications">เปิด / บันทึกการแจ้งเตือน</button>
             <div class="template-actions">
               <button class="secondary-button" type="button" id="testNotification">ทดสอบแจ้งเตือน</button>
@@ -490,7 +494,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-05.4';
+      const APP_VERSION = '2026-11-06.1';
       async function checkForUpdate() {
         try {
           const response = await fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' });
@@ -634,7 +638,7 @@
           const row = {
             user_id: auth.user.id, schedule_id: cloudScheduleId, endpoint: subscription.endpoint,
             subscription: subscription.toJSON(), reminder_time: $('reminderTime').value || '20:00',
-            reminder_offset: $('reminderOffset').value,
+            reminder_offset: $('reminderOffset').value, morning_time: morningValue(), last_morning_for_date: null,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
             enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString(),
             member_name: myName || null
@@ -647,12 +651,18 @@
         } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
       }
       const REMINDER_PREF_KEY = 'nursing-duty-reminder-pref-v1';
+      function morningValue() { return $('morningOn').checked ? ($('morningTime').value || '07:30') : null; }
       function saveReminderPref() {
-        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value })); } catch (_) {}
+        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue() })); } catch (_) {}
       }
-      function applyReminderPref(time, offset) {
+      function applyReminderPref(time, offset, morning) {
         if (time) $('reminderTime').value = String(time).slice(0, 5);
         if (offset) $('reminderOffset').value = offset;
+        if (morning !== undefined) {
+          $('morningOn').checked = Boolean(morning);
+          if (morning) $('morningTime').value = String(morning).slice(0, 5);
+          $('morningTime').disabled = !morning;
+        }
       }
       // Show what is actually saved on the server for this device, if it is subscribed.
       async function loadServerReminder() {
@@ -663,20 +673,20 @@
           let row = null;
           if (subscription) {
             ({ data: row } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
+              .select('reminder_time,reminder_offset,morning_time,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
           }
           if (!row && currentUser) {
             // This device isn't registered yet: use the same time as the account's other devices.
             const { data: rows } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
+              .select('reminder_time,reminder_offset,morning_time').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
             const shared = rows?.[0];
-            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset); saveReminderPref(); }
+            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); saveReminderPref(); }
             if ('Notification' in window && Notification.permission === 'granted') { await enablePushNotifications(); return; }
             if (shared) $('notificationStatus').textContent = `บัญชีนี้เตือนเวลา ${String(shared.reminder_time).slice(0, 5)} · กด "เปิด / บันทึกการแจ้งเตือน" เพื่อรับแจ้งเตือนบนเครื่องนี้ด้วย`;
             return;
           }
           if (!row) return;
-          applyReminderPref(row.reminder_time, row.reminder_offset); saveReminderPref();
+          applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); saveReminderPref();
           if (row.enabled) $('notificationStatus').textContent = `เปิดแจ้งเตือนอยู่ เวลา ${String(row.reminder_time).slice(0, 5)} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
         } catch (_) { /* Keep local values if the server can't be reached. */ }
       }
@@ -684,7 +694,7 @@
       async function syncAccountReminder() {
         if (!supabaseClient || !currentUser) return 0;
         const { data: updated, error } = await supabaseClient.from('push_subscriptions')
-          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, member_name: myName || null, last_sent_for_date: null, updated_at: new Date().toISOString() })
+          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, morning_time: morningValue(), member_name: myName || null, last_sent_for_date: null, last_morning_for_date: null, updated_at: new Date().toISOString() })
           .eq('user_id', currentUser.id).select('id');
         if (error) throw error;
         return updated?.length || 0;
@@ -697,7 +707,7 @@
           if (!currentUser) { $('notificationStatus').textContent = 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน'; return; }
           const updated = await syncAccountReminder();
           $('notificationStatus').textContent = updated
-            ? `บันทึกเวลาแจ้งเตือนใหม่แล้ว: ${$('reminderTime').value} (${$('reminderOffset').value === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'}) · ใช้กับ ${updated} เครื่องในบัญชีนี้`
+            ? `บันทึกเวลาแจ้งเตือนใหม่แล้ว: ${$('reminderTime').value} (${$('reminderOffset').value === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})${morningValue() ? ` + เช้า ${morningValue()}` : ''} · ใช้กับ ${updated} เครื่องในบัญชีนี้`
             : 'บันทึกเวลาในเครื่องแล้ว กด "เปิด / บันทึกการแจ้งเตือน" เพื่อใช้งาน';
         } catch (error) { $('notificationStatus').textContent = `บันทึกเวลาไม่สำเร็จ: ${error.message}`; }
       }
@@ -1417,7 +1427,9 @@
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
       try { const lastEmail = localStorage.getItem('nursing-duty-last-email'); if (lastEmail && !$('syncEmail').value) $('syncEmail').value = lastEmail; } catch (_) {}
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
-      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset); } catch (_) {}
+      $('morningTime').addEventListener('change', onReminderSettingChange);
+      $('morningOn').addEventListener('change', () => { $('morningTime').disabled = !$('morningOn').checked; onReminderSettingChange(); });
+      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); } catch (_) {}
       $('copyShareCode').addEventListener('click', async () => {
         const code = $('currentShareCode').textContent.replace(/^รหัสเชิญ:\s*/, '');
         try { await navigator.clipboard.writeText(code); syncStatus('คัดลอกรหัสเชิญแล้ว'); }

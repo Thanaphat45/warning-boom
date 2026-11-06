@@ -11,6 +11,8 @@ type PushSubscriptionRow = {
   timezone: string
   last_sent_for_date: string | null
   member_name: string | null
+  morning_time: string | null
+  last_morning_for_date: string | null
 }
 
 function localClock(now: Date, timezone: string) {
@@ -64,7 +66,7 @@ Deno.serve(async request => {
   })
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('push_subscriptions')
-    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name')
+    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date')
     .eq('enabled', true)
     .limit(500)
 
@@ -84,41 +86,64 @@ Deno.serve(async request => {
   let expired = 0
   let failed = 0
 
+  const thaiDate = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number)
+    return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)))
+  }
+  const inWindow = (clockMinute: number, time: string) => {
+    const [hour, minute] = time.slice(0, 5).split(':').map(Number)
+    const target = hour * 60 + minute
+    // Cron runs every minute; this small grace window tolerates scheduler jitter.
+    return clockMinute >= target && clockMinute < target + 5
+  }
+  const dutiesFor = (row: PushSubscriptionRow, dateKey: string) => {
+    const schedule = scheduleById.get(row.schedule_id) as { entries?: Record<string, Array<{ duty: string; done?: boolean; assignee?: string }>> } | undefined
+    // Only this account's own duties, plus duties nobody has been assigned to.
+    const me = row.member_name?.trim() || ''
+    return (schedule?.entries?.[dateKey] ?? [])
+      .filter(entry => entry && !entry.done)
+      .filter(entry => !me || !entry.assignee || entry.assignee === me)
+      .map(entry => entry.duty)
+  }
+
   for (const row of subscriptions as PushSubscriptionRow[]) {
     try {
       const clock = localClock(now, row.timezone || 'Asia/Bangkok')
-      const [hour, minute] = row.reminder_time.slice(0, 5).split(':').map(Number)
-      const reminderMinute = hour * 60 + minute
-      // Cron runs every minute; this small grace window tolerates scheduler jitter.
-      if (clock.minuteOfDay < reminderMinute || clock.minuteOfDay >= reminderMinute + 5) continue
+      const jobs: Array<{ date: string; body: string; mark: Record<string, string> }> = []
+      const me = row.member_name?.trim()
 
-      const targetDate = row.reminder_offset === 'day_before' ? addDate(clock.date, 1) : clock.date
-      if (row.last_sent_for_date === targetDate) continue
-      const schedule = scheduleById.get(row.schedule_id) as { entries?: Record<string, Array<{ duty: string; done?: boolean; assignee?: string }>> } | undefined
-      // Only this device's own duties, plus duties nobody has been assigned to.
-      const me = row.member_name?.trim() || ''
-      const duties = (schedule?.entries?.[targetDate] ?? [])
-        .filter(entry => entry && !entry.done)
-        .filter(entry => !me || !entry.assignee || entry.assignee === me)
-        .map(entry => entry.assignee && entry.assignee !== me ? `${entry.duty} (${entry.assignee})` : entry.duty)
-      if (!duties.length) continue
+      // Regular reminder (evening before, or same day) at reminder_time.
+      if (inWindow(clock.minuteOfDay, row.reminder_time)) {
+        const date = row.reminder_offset === 'day_before' ? addDate(clock.date, 1) : clock.date
+        const duties = row.last_sent_for_date === date ? [] : dutiesFor(row, date)
+        if (duties.length) {
+          const lead = row.reminder_offset === 'day_before' ? 'พรุ่งนี้' : 'วันนี้'
+          jobs.push({ date, body: `${lead} (${thaiDate(date)}) ${me ? me + ' ' : ''}มีหน้าที่: ${duties.join(', ')}`, mark: { last_sent_for_date: date } })
+        }
+      }
+      // Morning summary of today's duties at morning_time.
+      if (row.morning_time && inWindow(clock.minuteOfDay, row.morning_time) && row.last_morning_for_date !== clock.date) {
+        const duties = dutiesFor(row, clock.date)
+        if (duties.length) jobs.push({ date: clock.date, body: `☀️ วันนี้ (${thaiDate(clock.date)}) ${me ? me + ' ' : ''}มีหน้าที่: ${duties.join(', ')}`, mark: { last_morning_for_date: clock.date } })
+      }
 
-      const lead = row.reminder_offset === 'day_before' ? 'พรุ่งนี้' : 'วันนี้'
-      const body = `${lead} ${targetDate} มีหน้าที่: ${duties.join(', ')}`
-      try {
-        await webpush.sendNotification(row.subscription, JSON.stringify({
-          title: 'ตารางหน้าที่พยาบาล', body, url: './', tag: `nursing-duty-${targetDate}`
-        }), { TTL: 600, urgency: 'high' })
-        const { error: updateError } = await supabase.from('push_subscriptions')
-          .update({ last_sent_for_date: targetDate, updated_at: now.toISOString() }).eq('id', row.id)
-        if (updateError) failed++
-        else sent++
-      } catch (pushError) {
-        const statusCode = (pushError as { statusCode?: number }).statusCode
-        if (statusCode === 404 || statusCode === 410) {
-          await supabase.from('push_subscriptions').delete().eq('id', row.id)
-          expired++
-        } else failed++
+      for (const job of jobs) {
+        try {
+          await webpush.sendNotification(row.subscription, JSON.stringify({
+            title: 'ตารางหน้าที่พยาบาล', body: job.body, url: './', tag: `nursing-duty-${job.date}-${Object.keys(job.mark)[0]}`
+          }), { TTL: 600, urgency: 'high' })
+          const { error: updateError } = await supabase.from('push_subscriptions')
+            .update({ ...job.mark, updated_at: now.toISOString() }).eq('id', row.id)
+          if (updateError) failed++
+          else sent++
+        } catch (pushError) {
+          const statusCode = (pushError as { statusCode?: number }).statusCode
+          if (statusCode === 404 || statusCode === 410) {
+            await supabase.from('push_subscriptions').delete().eq('id', row.id)
+            expired++
+            break
+          } else failed++
+        }
       }
     } catch (_) { failed++ }
   }
