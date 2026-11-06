@@ -13,6 +13,7 @@ type PushSubscriptionRow = {
   member_name: string | null
   morning_time: string | null
   last_morning_for_date: string | null
+  morning_message: string | null
 }
 
 function localClock(now: Date, timezone: string) {
@@ -66,7 +67,7 @@ Deno.serve(async request => {
   })
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('push_subscriptions')
-    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date')
+    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date,morning_message')
     .eq('enabled', true)
     .limit(500)
 
@@ -101,7 +102,7 @@ Deno.serve(async request => {
     // Only this account's own duties, plus duties nobody has been assigned to.
     const me = row.member_name?.trim() || ''
     return (schedule?.entries?.[dateKey] ?? [])
-      .filter(entry => entry && !entry.done)
+      .filter(entry => entry)
       .filter(entry => !me || !entry.assignee || entry.assignee === me)
       .map(entry => entry.duty)
   }
@@ -109,7 +110,7 @@ Deno.serve(async request => {
   for (const row of subscriptions as PushSubscriptionRow[]) {
     try {
       const clock = localClock(now, row.timezone || 'Asia/Bangkok')
-      const jobs: Array<{ date: string; body: string; mark: Record<string, string> }> = []
+      const jobs: Array<{ date: string; title?: string; body: string; mark: Record<string, string> }> = []
       const me = row.member_name?.trim()
 
       // Regular reminder (evening before, or same day) at reminder_time.
@@ -124,13 +125,17 @@ Deno.serve(async request => {
       // Morning summary of today's duties at morning_time.
       if (row.morning_time && inWindow(clock.minuteOfDay, row.morning_time) && row.last_morning_for_date !== clock.date) {
         const duties = dutiesFor(row, clock.date)
-        if (duties.length) jobs.push({ date: clock.date, body: `☀️ วันนี้ (${thaiDate(clock.date)}) ${me ? me + ' ' : ''}มีหน้าที่: ${duties.join(', ')}`, mark: { last_morning_for_date: clock.date } })
+        // One encouragement line per day, picked from the user's list (stable for the whole day).
+        const lines = (row.morning_message || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+        const dayNumber = Math.floor(Date.parse(`${clock.date}T00:00:00Z`) / 86400000)
+        const cheer = lines.length ? lines[dayNumber % lines.length] : ''
+        if (duties.length) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}`, mark: { last_morning_for_date: clock.date } })
       }
 
       for (const job of jobs) {
         try {
           await webpush.sendNotification(row.subscription, JSON.stringify({
-            title: 'ตารางหน้าที่พยาบาล', body: job.body, url: './', tag: `nursing-duty-${job.date}-${Object.keys(job.mark)[0]}`
+            title: job.title || 'ตารางหน้าที่พยาบาล', body: job.body, url: './', tag: `nursing-duty-${job.date}-${Object.keys(job.mark)[0]}`
           }), { TTL: 600, urgency: 'high' })
           const { error: updateError } = await supabase.from('push_subscriptions')
             .update({ ...job.mark, updated_at: now.toISOString() }).eq('id', row.id)

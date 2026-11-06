@@ -63,8 +63,24 @@
     .update-banner { animation: banner-in .35s ease-out; }
     @keyframes banner-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .update-banner { white-space: nowrap; position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%); padding: 12px 18px; border: 0; border-radius: 999px; background: var(--green, #8dde83); color: #17211a; font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 30px #0008; cursor: pointer; }
+    .morning-message { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #11171399; color: var(--text); font: inherit; font-size: 15px; line-height: 1.5; resize: vertical; }
     .sync-controls .morning-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; margin-top: 8px; color: var(--text); font-size: 14px; text-align: left; }
     .sync-controls .morning-toggle input { flex: 0 0 auto; width: 20px; min-width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--green); }
+    .today-hero { display: flex; flex-direction: column; gap: 18px; min-height: calc(100dvh - 150px); padding: 26px 22px; }
+    .today-kicker { margin: 0; color: var(--green-strong, #8dde83); font-size: 14px; font-weight: 800; letter-spacing: .3px; }
+    .today-big-date { margin: 4px 0 0; font-size: 34px; line-height: 1.15; letter-spacing: -.5px; }
+    .today-sub { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+    .today-holiday { display: inline-block; margin: 10px 0 0; padding: 6px 12px; border-radius: 999px; background: #ff9b8522; color: #ffb3a3; font-size: 14px; font-weight: 700; }
+    .today-holiday[hidden] { display: none; }
+    .today-hero .today-entries { display: grid; gap: 12px; flex: 1; align-content: start; }
+    .today-tile { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 78px; padding: 16px 18px; border: 0; border-radius: 20px; color: #17211a; font: inherit; text-align: left; cursor: pointer; box-shadow: 0 10px 24px #0004; }
+    .today-tile .tile-name { font-size: 24px; font-weight: 850; line-height: 1.2; }
+    .today-tile .tile-note { display: block; margin-top: 3px; font-size: 14px; font-weight: 600; opacity: .75; }
+    .today-tile .tile-icon { font-size: 28px; }
+    .today-hero .today-empty { display: grid; place-items: center; min-height: 160px; padding: 24px; border-radius: 20px; font-size: 18px; text-align: center; line-height: 1.6; }
+    .today-hero-actions { display: grid; gap: 10px; }
+    .today-add { min-height: 54px; font-size: 17px; }
+    .today-scroll { padding: 10px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .status-pill { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #ffffff08; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
     .status-pill.ok { border-color: #8dde8366; background: #8dde8314; }
@@ -159,6 +175,10 @@
     }
     .day:hover { background: #ffffff09; border-color: #ffffff14; }
     .day.outside { opacity: .36; }
+    .day.holiday { background: #ff9b8512; border-color: #ff9b8530; }
+    .day.holiday .date-number { color: #ffb3a3; font-weight: 800; }
+    .day.today.holiday .date-number { color: var(--ink); }
+    .holiday-label { display: block; margin-top: 2px; overflow: hidden; color: #ffb3a3; font-size: 9px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
     .day.today .date-number { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--green); color: var(--ink); font-weight: 800; }
     .date-number { display: inline-block; font-size: 13px; }
     .day-label { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -308,12 +328,18 @@
       <div><h1>ปฏิทินหน้าที่</h1><p>แตะวันที่เพื่อเพิ่มหรือแก้ไขหน้าที่ของคุณ</p></div>
     </section>
 
-    <section class="today-card" aria-labelledby="todayHeading">
-      <div class="today-head">
-        <div><h2 id="todayHeading">หน้าที่วันนี้</h2><p id="todayDate"></p></div>
-        <button class="primary-button" type="button" id="addToday">＋ เพิ่มหน้าที่</button>
+    <section class="today-card today-hero" aria-labelledby="todayHeading">
+      <div class="today-hero-top">
+        <p class="today-kicker">หน้าที่วันนี้</p>
+        <h2 id="todayHeading" class="today-big-date"></h2>
+        <p id="todayDate" class="today-sub"></p>
+        <p id="todayHoliday" class="today-holiday" hidden></p>
       </div>
       <div class="today-entries" id="todayEntries"></div>
+      <div class="today-hero-actions">
+        <button class="primary-button today-add" type="button" id="addToday">＋ เพิ่มหน้าที่วันนี้</button>
+        <button class="today-scroll" type="button" id="scrollCalendar">ดูปฏิทินทั้งเดือน ↓</button>
+      </div>
     </section>
 
     <div class="layout">
@@ -419,6 +445,11 @@
             <input id="reminderTime" type="time" value="20:00">
             <label class="checkbox-field morning-toggle"><input id="morningOn" type="checkbox" checked> ☀️ เตือนตอนเช้าว่าวันนี้มีหน้าที่อะไร</label>
             <input id="morningTime" type="time" value="07:30" aria-label="เวลาเตือนตอนเช้า">
+            <label class="field-label" for="morningMessage">💌 ข้อความให้กำลังใจตอนเช้า (ขึ้นบรรทัดใหม่ = หลายข้อความ สุ่มวันละข้อความ)</label>
+            <textarea id="morningMessage" class="morning-message" rows="4" maxlength="500">สู้ๆ นะ 💪
+วันนี้ก็เก่งเหมือนทุกวันนะ ✨
+อย่าลืมกินข้าวกับดื่มน้ำนะ 🍚💧
+ภูมิใจในตัวเธอเสมอ ❤️</textarea>
             <button class="secondary-button" type="button" id="enableNotifications">เปิด / บันทึกการแจ้งเตือน</button>
             <div class="template-actions">
               <button class="secondary-button" type="button" id="testNotification">ทดสอบแจ้งเตือน</button>
@@ -479,7 +510,7 @@
         <label for="noteInput">หมายเหตุ (ถ้ามี)</label>
         <input id="noteInput" maxlength="80" placeholder="เช่น เตรียมอุปกรณ์ก่อน 8 โมง">
       </div>
-      <div class="field"><label class="checkbox-field"><input id="doneInput" type="checkbox"> เสร็จแล้ว</label></div>
+      <input id="doneInput" type="checkbox" hidden>
       <button class="text-button" type="button" id="copyPrevious">คัดลอกจากวันก่อน</button>
       <div class="copy-status" id="copyStatus" aria-live="polite"></div>
       <div class="dialog-actions">
@@ -497,7 +528,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.2';
+      const APP_VERSION = '2026-11-06.3';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -558,7 +589,7 @@
             stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
             stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
             for (const entries of Object.values(stored.entries)) {
-              if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
+              if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
             }
             return stored;
           }
@@ -600,7 +631,7 @@
           members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : []
         };
         for (const entries of Object.values(normalized.entries)) {
-          if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
+          if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
         }
         return normalized;
       }
@@ -647,7 +678,7 @@
           const row = {
             user_id: auth.user.id, schedule_id: cloudScheduleId, endpoint: subscription.endpoint,
             subscription: subscription.toJSON(), reminder_time: $('reminderTime').value || '20:00',
-            reminder_offset: $('reminderOffset').value, morning_time: morningValue(), last_morning_for_date: null,
+            reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), last_morning_for_date: null,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
             enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString(),
             member_name: myName || null
@@ -660,9 +691,10 @@
         } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
       }
       const REMINDER_PREF_KEY = 'nursing-duty-reminder-pref-v1';
+      function morningMessageValue() { return $('morningMessage').value.trim().slice(0, 500) || null; }
       function morningValue() { return $('morningOn').checked ? ($('morningTime').value || '07:30') : null; }
       function saveReminderPref() {
-        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue() })); } catch (_) {}
+        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value })); } catch (_) {}
       }
       function applyReminderPref(time, offset, morning) {
         if (time) $('reminderTime').value = String(time).slice(0, 5);
@@ -682,20 +714,20 @@
           let row = null;
           if (subscription) {
             ({ data: row } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset,morning_time,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
+              .select('reminder_time,reminder_offset,morning_time,morning_message,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
           }
           if (!row && currentUser) {
             // This device isn't registered yet: use the same time as the account's other devices.
             const { data: rows } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset,morning_time').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
+              .select('reminder_time,reminder_offset,morning_time,morning_message').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
             const shared = rows?.[0];
-            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); saveReminderPref(); }
+            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); if (shared.morning_message) $('morningMessage').value = shared.morning_message; saveReminderPref(); }
             if ('Notification' in window && Notification.permission === 'granted') { await enablePushNotifications(); return; }
             if (shared) $('notificationStatus').textContent = `บัญชีนี้เตือนเวลา ${String(shared.reminder_time).slice(0, 5)} · กด "เปิด / บันทึกการแจ้งเตือน" เพื่อรับแจ้งเตือนบนเครื่องนี้ด้วย`;
             return;
           }
           if (!row) return;
-          applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); saveReminderPref();
+          applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); if (row.morning_message) $('morningMessage').value = row.morning_message; saveReminderPref();
           if (row.enabled) $('notificationStatus').textContent = `เปิดแจ้งเตือนอยู่ เวลา ${String(row.reminder_time).slice(0, 5)} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
         } catch (_) { /* Keep local values if the server can't be reached. */ }
       }
@@ -703,7 +735,7 @@
       async function syncAccountReminder() {
         if (!supabaseClient || !currentUser) return 0;
         const { data: updated, error } = await supabaseClient.from('push_subscriptions')
-          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, morning_time: morningValue(), member_name: myName || null, last_sent_for_date: null, last_morning_for_date: null, updated_at: new Date().toISOString() })
+          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), member_name: myName || null, last_sent_for_date: null, last_morning_for_date: null, updated_at: new Date().toISOString() })
           .eq('user_id', currentUser.id).select('id');
         if (error) throw error;
         return updated?.length || 0;
@@ -1006,10 +1038,11 @@
             const x = pad + col * cellW, y = headH + weekdayH + row * cellH;
             const outside = !isWeek && date.getMonth() !== shownMonth.getMonth();
             ctx.globalAlpha = outside ? 0.35 : 1;
-            ctx.fillStyle = '#222925'; roundRect(ctx, x + 3, y + 3, cellW - 6, cellH - 6, 14); ctx.fill();
             const key = dateKey(date);
+            ctx.fillStyle = holidayName(key) ? '#3a2b27' : '#222925'; roundRect(ctx, x + 3, y + 3, cellW - 6, cellH - 6, 14); ctx.fill();
             if (key === todayKey) { ctx.strokeStyle = '#8dde83'; ctx.lineWidth = 3; ctx.stroke(); }
-            ctx.fillStyle = '#eef3ee'; ctx.font = `800 28px ${font}`; ctx.fillText(String(date.getDate()), x + 14, y + 12);
+            ctx.fillStyle = holidayName(key) ? '#ffb3a3' : '#eef3ee'; ctx.font = `800 28px ${font}`; ctx.fillText(String(date.getDate()), x + 14, y + 12);
+            if (holidayName(key)) { ctx.font = `700 15px ${font}`; ctx.fillText(fitText(ctx, holidayName(key), cellW - 60), x + 52, y + 20); }
             const entries = visible(data.entries[key] || []);
             const maxChips = isWeek ? 9 : 3; let cy = y + 52;
             entries.slice(0, maxChips).forEach(entry => {
@@ -1040,6 +1073,22 @@
         } catch (error) { alert(`สร้างรูปไม่สำเร็จ: ${error.message}`); }
         finally { button.disabled = false; button.textContent = label; }
       }
+      // Thai public holidays (ราชการ), B.E. 2569–2570. Sources: kapook / sanook / myhora calendars.
+      const THAI_HOLIDAYS = {
+        '2026-01-01': 'วันขึ้นปีใหม่', '2026-03-03': 'วันมาฆบูชา', '2026-04-06': 'วันจักรี',
+        '2026-04-13': 'วันสงกรานต์', '2026-04-14': 'วันสงกรานต์', '2026-04-15': 'วันสงกรานต์',
+        '2026-05-04': 'วันฉัตรมงคล', '2026-05-13': 'วันพืชมงคล', '2026-05-31': 'วันวิสาขบูชา', '2026-06-01': 'ชดเชยวันวิสาขบูชา',
+        '2026-06-03': 'วันเฉลิมฯ พระราชินี', '2026-07-28': 'วันเฉลิมฯ ร.10', '2026-07-29': 'วันอาสาฬหบูชา', '2026-07-30': 'วันเข้าพรรษา',
+        '2026-08-12': 'วันแม่แห่งชาติ', '2026-10-13': 'วันนวมินทรมหาราช', '2026-10-23': 'วันปิยมหาราช',
+        '2026-12-05': 'วันพ่อแห่งชาติ', '2026-12-07': 'ชดเชยวันพ่อแห่งชาติ', '2026-12-10': 'วันรัฐธรรมนูญ', '2026-12-31': 'วันสิ้นปี',
+        '2027-01-01': 'วันขึ้นปีใหม่', '2027-02-21': 'วันมาฆบูชา', '2027-02-22': 'ชดเชยวันมาฆบูชา', '2027-04-06': 'วันจักรี',
+        '2027-04-13': 'วันสงกรานต์', '2027-04-14': 'วันสงกรานต์', '2027-04-15': 'วันสงกรานต์',
+        '2027-05-04': 'วันฉัตรมงคล', '2027-05-10': 'วันพืชมงคล', '2027-05-20': 'วันวิสาขบูชา', '2027-06-03': 'วันเฉลิมฯ พระราชินี',
+        '2027-07-18': 'วันอาสาฬหบูชา', '2027-07-19': 'วันเข้าพรรษา', '2027-07-20': 'ชดเชยวันอาสาฬหบูชา', '2027-07-28': 'วันเฉลิมฯ ร.10',
+        '2027-08-12': 'วันแม่แห่งชาติ', '2027-10-13': 'วันนวมินทรมหาราช', '2027-10-23': 'วันปิยมหาราช', '2027-10-25': 'ชดเชยวันปิยมหาราช',
+        '2027-12-05': 'วันพ่อแห่งชาติ', '2027-12-06': 'ชดเชยวันพ่อแห่งชาติ', '2027-12-10': 'วันรัฐธรรมนูญ', '2027-12-31': 'วันสิ้นปี'
+      };
+      function holidayName(key) { return THAI_HOLIDAYS[key] || ''; }
       function renderAll() {
         renderFilterBar(); renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
       }
@@ -1081,6 +1130,12 @@
           if (key === dateKey(today)) btn.classList.add('today');
           btn.setAttribute('aria-label', `${thaiLong.format(date)}${entries.length ? ` มีหน้าที่ ${entries.map(e => e.duty).join(', ')}` : ''}`);
           const num = document.createElement('span'); num.className = 'date-number'; num.textContent = date.getDate(); btn.append(num);
+          const holiday = holidayName(key);
+          if (holiday) {
+            btn.classList.add('holiday');
+            const tag = document.createElement('span'); tag.className = 'holiday-label'; tag.textContent = holiday; btn.append(tag);
+            btn.setAttribute('aria-label', `${btn.getAttribute('aria-label')} · วันหยุด ${holiday}`);
+          }
           if (date.getDate() === 1) {
             const label = document.createElement('span'); label.className = 'day-label'; label.textContent = thaiMonthShort.format(date); btn.append(label);
           }
@@ -1103,23 +1158,31 @@
         const name = document.createElement('span'); name.className = 'task-name'; name.textContent = entry.duty; name.style.backgroundColor = colorForDuty(entry.duty); row.append(name);
         if (entry.assignee) { const who = document.createElement('span'); who.className = 'assignee-tag'; who.textContent = `👤 ${entry.assignee}`; row.append(who); }
         if (entry.note) { const note = document.createElement('span'); note.className = 'task-note'; note.textContent = entry.note; row.append(note); }
-        const checkLabel = document.createElement('label'); checkLabel.className = 'task-check';
-        const check = document.createElement('input'); check.type = 'checkbox'; check.checked = Boolean(entry.done); check.setAttribute('aria-label', `ทำ ${entry.duty} เสร็จแล้ว`);
-        check.addEventListener('change', () => {
-          const current = data.entries[key]?.[index]; if (!current) return;
-          current.done = check.checked; save(); renderAll();
-        });
-        checkLabel.append(check, document.createTextNode('เสร็จ')); row.append(checkLabel);
         return row;
       }
       function renderToday() {
-        const now = new Date(); const key = dateKey(now); const allEntries = data.entries[key] || []; const entries = visible(allEntries);
-        $('todayDate').textContent = formatDay(now);
+        const now = new Date(); const key = dateKey(now); const entries = visible(data.entries[key] || []);
+        $('todayHeading').textContent = new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+        $('todayDate').textContent = entries.length ? `มีหน้าที่ ${entries.length} อย่าง` : 'พ.ศ. ' + (now.getFullYear() + 543);
+        const holiday = holidayName(key);
+        $('todayHoliday').hidden = !holiday; $('todayHoliday').textContent = holiday ? `🎌 ${holiday}` : '';
         const container = $('todayEntries'); container.replaceChildren();
         if (!entries.length) {
-          const empty = document.createElement('div'); empty.className = 'today-empty'; empty.textContent = 'วันนี้ยังไม่มีหน้าที่ที่บันทึกไว้'; container.append(empty); return;
+          const empty = document.createElement('div'); empty.className = 'today-empty';
+          empty.textContent = holiday ? `วันนี้${holiday} 🎉\nไม่มีหน้าที่ พักผ่อนให้เต็มที่นะ` : 'วันนี้ยังไม่มีหน้าที่ 🌿\nแตะ "เพิ่มหน้าที่วันนี้" เพื่อลงเวร';
+          empty.style.whiteSpace = 'pre-line'; container.append(empty); return;
         }
-        entries.forEach(entry => container.append(makeTaskRow(key, entry, allEntries.indexOf(entry))));
+        entries.forEach(entry => {
+          const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'today-tile';
+          tile.style.backgroundColor = colorForDuty(entry.duty);
+          const icon = document.createElement('span'); icon.className = 'tile-icon'; icon.textContent = '📌';
+          const text = document.createElement('span');
+          const name = document.createElement('span'); name.className = 'tile-name'; name.textContent = entry.duty; text.append(name);
+          if (entry.note) { const note = document.createElement('span'); note.className = 'tile-note'; note.textContent = entry.note; text.append(note); }
+          tile.append(icon, text);
+          tile.addEventListener('click', () => { selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); openDialog(key); });
+          container.append(tile);
+        });
       }
       function renderWeek() {
         const start = weekStart(selectedDate); const end = new Date(start); end.setDate(start.getDate() + 6);
@@ -1130,7 +1193,8 @@
           const key = dateKey(date); const allEntries = data.entries[key] || []; const entries = visible(allEntries);
           const day = document.createElement('section'); day.className = 'week-day';
           const head = document.createElement('div'); head.className = 'week-day-head';
-          const dateLabel = document.createElement('span'); dateLabel.textContent = formatDay(date);
+          const dateLabel = document.createElement('span'); dateLabel.textContent = formatDay(date) + (holidayName(key) ? ` · 🎌 ${holidayName(key)}` : '');
+          if (holidayName(key)) dateLabel.style.color = '#ffb3a3';
           const add = document.createElement('button'); add.type = 'button'; add.textContent = entries.length ? 'เพิ่ม / แก้ไข' : '+ เพิ่ม'; add.addEventListener('click', () => { selectedDate = new Date(date); openDialog(key); });
           head.append(dateLabel, add); day.append(head);
           if (!entries.length) { const empty = document.createElement('div'); empty.className = 'week-empty'; empty.textContent = 'ยังไม่มีหน้าที่'; day.append(empty); }
@@ -1261,7 +1325,7 @@
       function openDialog(key) {
         selectedKey = key;
         const [year, month, day] = key.split('-').map(Number);
-        $('selectedDate').textContent = thaiLong.format(new Date(year, month - 1, day));
+        $('selectedDate').textContent = thaiLong.format(new Date(year, month - 1, day)) + (holidayName(key) ? ` · 🎌 ${holidayName(key)} (ลงเวรได้ตามปกติ)` : '');
         const sourceDate = new Date(year, month - 1, day); sourceDate.setDate(sourceDate.getDate() - 1);
         $('copyPrevious').textContent = `คัดลอกจาก ${new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' }).format(sourceDate)}`;
         const entries = data.entries[key] || [];
@@ -1357,6 +1421,7 @@
       $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
+      $('scrollCalendar').addEventListener('click', () => document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       $('deleteSeries').addEventListener('click', () => {
         const item = (data.entries[selectedKey] || [])[editIndex]; if (!item?.seriesId) return;
         const keys = Object.keys(data.entries).filter(key => key >= selectedKey && data.entries[key].some(e => e.seriesId === item.seriesId));
@@ -1439,8 +1504,9 @@
       try { const lastEmail = localStorage.getItem('nursing-duty-last-email'); if (lastEmail && !$('syncEmail').value) $('syncEmail').value = lastEmail; } catch (_) {}
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
       $('morningTime').addEventListener('change', onReminderSettingChange);
+      $('morningMessage').addEventListener('change', onReminderSettingChange);
       $('morningOn').addEventListener('change', () => { $('morningTime').disabled = !$('morningOn').checked; onReminderSettingChange(); });
-      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); } catch (_) {}
+      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) { applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); if (typeof pref.message === 'string') $('morningMessage').value = pref.message; } } catch (_) {}
       $('copyShareCode').addEventListener('click', async () => {
         const code = $('currentShareCode').textContent.replace(/^รหัสเชิญ:\s*/, '');
         try { await navigator.clipboard.writeText(code); syncStatus('คัดลอกรหัสเชิญแล้ว'); }

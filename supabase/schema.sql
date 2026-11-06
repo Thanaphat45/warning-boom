@@ -43,6 +43,7 @@ alter table public.push_subscriptions add column if not exists member_name text 
 -- Optional morning summary of today's duties.
 alter table public.push_subscriptions add column if not exists morning_time time;
 alter table public.push_subscriptions add column if not exists last_morning_for_date date;
+alter table public.push_subscriptions add column if not exists morning_message text check (char_length(morning_message) <= 500);
 
 create index if not exists push_subscriptions_due_idx
   on public.push_subscriptions (enabled, schedule_id)
