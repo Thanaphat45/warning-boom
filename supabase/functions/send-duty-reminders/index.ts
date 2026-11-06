@@ -113,20 +113,23 @@ Deno.serve(async request => {
   }
 
   // ---- Weather (Open-Meteo, free, no key). Cached per location for this run. ----
-  type Weather = { max: number; min: number; rainMax: number; rainHours: Array<{ h: number; p: number }>; pmMax: number | null }
+  type Weather = { max: number; min: number; rainMax: number; uv: number; rainHours: Array<{ h: number; p: number }>; pmMax: number | null }
   const weatherCache = new Map<string, Promise<Weather | null>>()
-  const getWeather = (lat: number, lon: number) => {
-    const key = `${lat.toFixed(2)},${lon.toFixed(2)}`
+  // day: 0 = today, 1 = tomorrow (local to the location)
+  const getWeather = (lat: number, lon: number, day = 0) => {
+    const key = `${lat.toFixed(2)},${lon.toFixed(2)},${day}`
     if (!weatherCache.has(key)) weatherCache.set(key, (async () => {
       try {
-        const base = `latitude=${lat}&longitude=${lon}&timezone=auto&forecast_days=1`
+        const base = `latitude=${lat}&longitude=${lon}&timezone=auto&forecast_days=2`
         const [fc, aq] = await Promise.all([
-          fetch(`https://api.open-meteo.com/v1/forecast?${base}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability`).then(res => res.json()),
+          fetch(`https://api.open-meteo.com/v1/forecast?${base}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&hourly=precipitation_probability`).then(res => res.json()),
           fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${base}&hourly=pm2_5`).then(res => res.json()).catch(() => null)
         ])
-        const rainHours = (fc.hourly?.time ?? []).map((t: string, i: number) => ({ h: Number(t.slice(11, 13)), p: fc.hourly.precipitation_probability[i] ?? 0 }))
-        const pm = (aq?.hourly?.pm2_5 ?? []).filter((v: number | null) => typeof v === 'number') as number[]
-        return { max: fc.daily.temperature_2m_max[0], min: fc.daily.temperature_2m_min[0], rainMax: fc.daily.precipitation_probability_max[0] ?? 0, rainHours, pmMax: pm.length ? Math.round(Math.max(...pm)) : null }
+        const dayKey = fc.daily.time[day]
+        const rainHours = (fc.hourly?.time ?? []).map((t: string, i: number) => ({ t, h: Number(t.slice(11, 13)), p: fc.hourly.precipitation_probability[i] ?? 0 }))
+          .filter((x: { t: string }) => x.t.startsWith(dayKey)).map(({ h, p }: { h: number; p: number }) => ({ h, p }))
+        const pm = ((aq?.hourly?.time ?? []) as string[]).map((t, i) => (t.startsWith(dayKey) ? aq.hourly.pm2_5[i] : null)).filter((v: number | null) => typeof v === 'number') as number[]
+        return { max: fc.daily.temperature_2m_max[day], min: fc.daily.temperature_2m_min[day], rainMax: fc.daily.precipitation_probability_max[day] ?? 0, uv: fc.daily.uv_index_max?.[day] ?? 0, rainHours, pmMax: pm.length ? Math.round(Math.max(...pm)) : null }
       } catch (_) { return null }
     })())
     return weatherCache.get(key)!
@@ -136,6 +139,7 @@ Deno.serve(async request => {
     const wet = w.rainHours.find(x => x.h >= 7 && x.h <= 20 && x.p >= 50)
     if (w.rainMax >= 50) parts.push(`☂️ ฝน ${w.rainMax}%${wet ? ` ช่วง ${String(wet.h).padStart(2, '0')}:00` : ''} พกร่มนะ`)
     else if (w.rainMax >= 25) parts.push(`🌂 อาจมีฝน ${w.rainMax}%`)
+    if (w.uv >= 8) parts.push(`🔆 UV ${Math.round(w.uv)} สูงมาก ทาครีมกันแดดนะ`)
     if (w.pmMax !== null && w.pmMax > 37.5) parts.push(`😷 PM2.5 ${w.pmMax} ใส่หน้ากากนะ`)
     return parts.join(' · ')
   }
@@ -152,7 +156,10 @@ Deno.serve(async request => {
         const duties = row.last_sent_for_date === date ? [] : dutiesFor(row, date)
         if (duties.length) {
           const lead = row.reminder_offset === 'day_before' ? 'พรุ่งนี้' : 'วันนี้'
-          jobs.push({ date, body: `${lead} (${thaiDate(date)}) ${me ? me + ' ' : ''}มีหน้าที่: ${duties.join(', ')}`, mark: { last_sent_for_date: date } })
+          const w = row.weather_lat != null && row.weather_lon != null ? await getWeather(row.weather_lat, row.weather_lon, row.reminder_offset === 'day_before' ? 1 : 0) : null
+          const wx = w ? `
+${lead}: ${weatherLine(w)}` : ''
+          jobs.push({ date, body: `${lead} (${thaiDate(date)}) ${me ? me + ' ' : ''}มีหน้าที่: ${duties.join(', ')}${wx}`, mark: { last_sent_for_date: date } })
         }
       }
       // Morning summary of today's duties at morning_time.
