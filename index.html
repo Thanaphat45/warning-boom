@@ -398,6 +398,21 @@
     .version-button { color: var(--muted); border-color: var(--line); }
     footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
     .update-banner { background: var(--green); color: #fff; bottom: calc(84px + env(safe-area-inset-bottom)); }
+    /* Love note + countdown */
+    .holiday-countdown { width: 100%; margin: 4px 0 0; color: #ffe1de; font-size: 13px; font-weight: 600; }
+    .holiday-countdown[hidden], .love-note[hidden] { display: none; }
+    .love-note { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 2px dashed #ffffff80; border-radius: 16px; background: #ffffff1a; color: #fff; font: inherit; font-size: 15px; font-weight: 700; text-align: left; cursor: pointer; }
+    .love-envelope { font-size: 26px; animation: wiggle 1.6s ease-in-out infinite; }
+    .love-note.opened { border-style: solid; background: #fff; color: #b5121b; font-weight: 600; white-space: pre-line; }
+    .love-note.opened .love-envelope { animation: none; }
+    .love-note.pop { animation: pop .45s ease-out; }
+    @keyframes wiggle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-12deg); } 40% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } 80% { transform: rotate(0); } }
+    @keyframes pop { 0% { transform: scale(.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    .note-form { display: grid; gap: 8px; }
+    .note-form input { min-height: 42px; padding: 0 12px; border-radius: 12px; }
+    .note-list { display: grid; gap: 6px; margin-top: 12px; }
+    .note-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+    .note-row span { color: var(--muted); font-size: 12px; }
     /* Template card */
     .step { display: flex; gap: 12px; padding: 12px 0; border-top: 1px dashed var(--line); }
     .step-no { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; font-size: 14px; }
@@ -449,7 +464,12 @@
         <h2 id="todayHeading" class="today-big-date"></h2>
         <p id="todayDate" class="today-sub"></p>
         <p id="todayHoliday" class="today-holiday" hidden></p>
+        <p id="holidayCountdown" class="holiday-countdown" hidden></p>
       </div>
+      <button type="button" class="love-note" id="loveNote" hidden>
+        <span class="love-envelope" aria-hidden="true">💌</span>
+        <span class="love-text" id="loveNoteText">วันนี้มีข้อความถึงคุณ · แตะเพื่อเปิดอ่าน</span>
+      </button>
       <div class="today-entries" id="todayEntries"></div>
       <div class="today-hero-actions">
         <button class="primary-button today-add" type="button" id="addToday">＋ เพิ่มหน้าที่วันนี้</button>
@@ -529,6 +549,17 @@
           </div>
         </div>
         <p class="template-copy" id="templateStatus" aria-live="polite"></p>
+      </section>
+
+      <section class="card note-card">
+        <div class="card-head"><span class="card-icon">💌</span><div><h3>ข้อความลับรายวัน</h3><p>เขียนไว้ล่วงหน้า แล้วจะขึ้นให้เปิดอ่านในวันนั้น</p></div></div>
+        <div class="note-form">
+          <input id="noteDate" type="date" aria-label="วันที่จะให้ข้อความขึ้น">
+          <textarea id="noteText" class="morning-message" rows="3" maxlength="300" placeholder="เช่น วันนี้เหนื่อยไหม เลิกงานแล้วไปกินชาบูกันนะ 🍲"></textarea>
+          <button class="primary-button" type="button" id="saveNote">บันทึกข้อความ</button>
+          <p class="template-copy" id="noteStatus" aria-live="polite"></p>
+        </div>
+        <div class="note-list" id="noteList"></div>
       </section>
 
       <section class="card">
@@ -674,7 +705,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.5';
+      const APP_VERSION = '2026-11-06.6';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -734,13 +765,14 @@
             stored.colors = stored.colors && typeof stored.colors === 'object' ? stored.colors : {};
             stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
             stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
+            stored.notes = stored.notes && typeof stored.notes === 'object' && !Array.isArray(stored.notes) ? stored.notes : {};
             for (const entries of Object.values(stored.entries)) {
               if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
             }
             return stored;
           }
         } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
-        return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [] };
+        return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {} };
       }
       function save() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -775,7 +807,8 @@
           entries: value.entries && typeof value.entries === 'object' ? value.entries : {},
           colors: value.colors && typeof value.colors === 'object' ? value.colors : {},
           templates: value.templates && typeof value.templates === 'object' ? value.templates : {},
-          members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : []
+          members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : [],
+          notes: value.notes && typeof value.notes === 'object' && !Array.isArray(value.notes) ? value.notes : {}
         };
         for (const entries of Object.values(normalized.entries)) {
           if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
@@ -1236,6 +1269,60 @@
         '2027-12-05': 'วันพ่อแห่งชาติ', '2027-12-06': 'ชดเชยวันพ่อแห่งชาติ', '2027-12-10': 'วันรัฐธรรมนูญ', '2027-12-31': 'วันสิ้นปี'
       };
       function holidayName(key) { return THAI_HOLIDAYS[key] || ''; }
+      function renderHolidayCountdown(todayKey) {
+        const next = Object.keys(THAI_HOLIDAYS).sort().find(key => key > todayKey);
+        const box = $('holidayCountdown');
+        if (!next) { box.hidden = true; return; }
+        const [y, m, d] = next.split('-').map(Number); const [ty, tm, td] = todayKey.split('-').map(Number);
+        const days = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000);
+        const when = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d));
+        box.textContent = days === 1 ? `🎉 พรุ่งนี้ได้หยุด! ${THAI_HOLIDAYS[next]}` : `🎉 อีก ${days} วันได้หยุด · ${THAI_HOLIDAYS[next]} (${when})`;
+        box.hidden = false;
+      }
+      // ---- Daily love notes ----
+      const OPENED_NOTES_KEY = 'nursing-duty-opened-notes-v1';
+      function openedNotes() { try { return JSON.parse(localStorage.getItem(OPENED_NOTES_KEY) || '{}'); } catch (_) { return {}; } }
+      function renderLoveNote(todayKey) {
+        const text = (data.notes || {})[todayKey];
+        const button = $('loveNote');
+        if (!text) { button.hidden = true; return; }
+        button.hidden = false;
+        const opened = openedNotes()[todayKey];
+        button.classList.toggle('opened', Boolean(opened));
+        $('loveNoteText').textContent = opened ? text : 'วันนี้มีข้อความถึงคุณ · แตะเพื่อเปิดอ่าน';
+      }
+      function openLoveNote() {
+        const key = dateKey(new Date()); if (!(data.notes || {})[key]) return;
+        const opened = openedNotes(); opened[key] = true;
+        try { localStorage.setItem(OPENED_NOTES_KEY, JSON.stringify(opened)); } catch (_) {}
+        renderLoveNote(key);
+        const button = $('loveNote'); button.classList.remove('pop'); void button.offsetWidth; button.classList.add('pop');
+      }
+      function renderNoteEditor() {
+        const list = $('noteList'); if (!list) return; list.replaceChildren();
+        const todayKey = dateKey(new Date());
+        const keys = Object.keys(data.notes || {}).filter(key => key >= todayKey).sort();
+        if (!keys.length) { const empty = document.createElement('p'); empty.className = 'step-hint'; empty.textContent = 'ยังไม่มีข้อความที่ตั้งไว้'; list.append(empty); return; }
+        const fmt = new Intl.DateTimeFormat('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+        keys.forEach(key => {
+          const [y, m, d] = key.split('-').map(Number);
+          const row = document.createElement('button'); row.type = 'button'; row.className = 'note-row';
+          const date = document.createElement('strong'); date.textContent = `💌 ${fmt.format(new Date(y, m - 1, d))}`;
+          const hidden = document.createElement('span'); hidden.textContent = key === todayKey ? 'วันนี้' : 'ซ่อนไว้จนถึงวันนั้น · แตะเพื่อแก้ไข';
+          row.append(date, hidden);
+          row.addEventListener('click', () => { $('noteDate').value = key; $('noteText').value = data.notes[key]; $('noteText').focus(); });
+          list.append(row);
+        });
+      }
+      function saveNote() {
+        const key = $('noteDate').value; const text = $('noteText').value.trim().slice(0, 300);
+        if (!key) { $('noteStatus').textContent = 'เลือกวันที่ก่อน'; return; }
+        data.notes = data.notes || {};
+        if (text) data.notes[key] = text; else delete data.notes[key];
+        save(); renderNoteEditor(); renderToday();
+        $('noteStatus').textContent = text ? 'ตั้งข้อความแล้ว 💌' : 'ลบข้อความของวันนั้นแล้ว';
+        $('noteText').value = '';
+      }
       function renderAll() {
         renderFilterBar(); renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
       }
@@ -1313,6 +1400,7 @@
         $('todayDate').textContent = entries.length ? `มีหน้าที่ ${entries.length} อย่าง` : 'พ.ศ. ' + (now.getFullYear() + 543);
         const holiday = holidayName(key);
         $('todayHoliday').hidden = !holiday; $('todayHoliday').textContent = holiday ? `🎌 ${holiday}` : '';
+        renderHolidayCountdown(key); renderLoveNote(key);
         const container = $('todayEntries'); container.replaceChildren();
         if (!entries.length) {
           const empty = document.createElement('div'); empty.className = 'today-empty';
@@ -1591,6 +1679,9 @@
       $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
+      $('loveNote').addEventListener('click', openLoveNote);
+      $('saveNote').addEventListener('click', saveNote);
+      $('noteDate').value = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return dateKey(t); })();
       // Bottom navigation
       const TAB_KEY = 'nursing-duty-tab-v1';
       function showTab(name, focus) {
@@ -1598,7 +1689,7 @@
         document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === name));
         try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
         if (focus) focus.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0 });
-        if (name === 'duties') renderTemplates();
+        if (name === 'duties') { renderTemplates(); renderNoteEditor(); }
       }
       document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => showTab(item.dataset.tab)));
       try { const savedTab = localStorage.getItem(TAB_KEY); if (savedTab && $(`view-${savedTab}`)) showTab(savedTab); } catch (_) {}
@@ -1709,7 +1800,7 @@
           const backup = JSON.parse(await file.text());
           if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
           if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
-          data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [] };
+          data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {} };
           for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
           save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
         } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }

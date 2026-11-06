@@ -129,7 +129,9 @@ Deno.serve(async request => {
         const lines = (row.morning_message || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
         const dayNumber = Math.floor(Date.parse(`${clock.date}T00:00:00Z`) / 86400000)
         const cheer = lines.length ? lines[dayNumber % lines.length] : ''
-        if (duties.length) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}`, mark: { last_morning_for_date: clock.date } })
+        const hasNote = Boolean((scheduleById.get(row.schedule_id) as { notes?: Record<string, string> } | undefined)?.notes?.[clock.date])
+        const noteLine = hasNote ? ' · 💌 มีข้อความรอเปิดอ่านในแอป' : ''
+        if (duties.length || hasNote) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: duties.length ? `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}${noteLine}` : `☀️ วันนี้ (${thaiDate(clock.date)}) ไม่มีหน้าที่${noteLine}`, mark: { last_morning_for_date: clock.date } })
       }
 
       for (const job of jobs) {
