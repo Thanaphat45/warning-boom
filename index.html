@@ -433,6 +433,8 @@
     .print-button { width: 100%; margin-top: 8px; }
     .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     /* Single-user: hide team-only UI */
+    .template-actions[hidden], .sync-account input[hidden] { display: none !important; }
+    #syncWorkspace { display: none !important; }
     .filter-bar, #memberSummaryTitle, #memberCounts { display: none !important; }
     .field:has(#assigneeSelect) { display: none; }
     /* Bottom navigation */
@@ -607,7 +609,7 @@
       </section>
 
       <section class="card sync-panel">
-        <div class="card-head"><span class="card-icon">🔔</span><div><h3>แจ้งเตือน</h3><p>เตือนคืนก่อนวันมีหน้าที่ และตอนเช้าพร้อมข้อความให้กำลังใจ</p></div></div>
+        <div class="card-head"><span class="card-icon">🔔</span><div><h3>แจ้งเตือน</h3><p>เตือนคืนก่อนวันมีหน้าที่ และทักทายตอนเช้า พร้อมบอกว่ามีข้อความรอเปิดอ่าน</p></div></div>
           <div class="sync-controls">
             <label class="field-label" for="reminderOffset">เตือนเมื่อ</label>
             <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
@@ -615,11 +617,7 @@
             <input id="reminderTime" type="time" value="20:00">
             <label class="checkbox-field morning-toggle"><input id="morningOn" type="checkbox" checked> ☀️ เตือนตอนเช้าว่าวันนี้มีหน้าที่อะไร</label>
             <input id="morningTime" type="time" value="07:30" aria-label="เวลาเตือนตอนเช้า">
-            <label class="field-label" for="morningMessage">💌 ข้อความให้กำลังใจตอนเช้า (ขึ้นบรรทัดใหม่ = หลายข้อความ สุ่มวันละข้อความ)</label>
-            <textarea id="morningMessage" class="morning-message" rows="4" maxlength="500">สู้ๆ นะ 💪
-วันนี้ก็เก่งเหมือนทุกวันนะ ✨
-อย่าลืมกินข้าวกับดื่มน้ำนะ 🍚💧
-ภูมิใจในตัวเธอเสมอ ❤️</textarea>
+            <textarea id="morningMessage" hidden></textarea>
             <button class="secondary-button" type="button" id="enableNotifications">เปิด / บันทึกการแจ้งเตือน</button>
             <div class="template-actions">
               <button class="secondary-button" type="button" id="testNotification">ทดสอบแจ้งเตือน</button>
@@ -705,7 +703,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.7';
+      const APP_VERSION = '2026-11-06.9';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -871,7 +869,7 @@
         } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
       }
       const REMINDER_PREF_KEY = 'nursing-duty-reminder-pref-v1';
-      function morningMessageValue() { return $('morningMessage').value.trim().slice(0, 500) || null; }
+      function morningMessageValue() { return null; } // greeting lines are built into the server; love notes stay hidden in the app
       function morningValue() { return $('morningOn').checked ? ($('morningTime').value || '07:30') : null; }
       function saveReminderPref() {
         try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value })); } catch (_) {}

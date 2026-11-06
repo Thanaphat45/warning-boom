@@ -128,7 +128,10 @@ Deno.serve(async request => {
         // One encouragement line per day, picked from the user's list (stable for the whole day).
         const lines = (row.morning_message || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
         const dayNumber = Math.floor(Date.parse(`${clock.date}T00:00:00Z`) / 86400000)
-        const cheer = lines.length ? lines[dayNumber % lines.length] : ''
+        // Generic greetings only — the personal messages stay hidden in the app's envelope.
+        const greetings = ['☀️ อรุณสวัสดิ์นะ', '🌤️ เช้านี้สู้ๆ นะ', '🌸 สวัสดีตอนเช้า', '💪 วันใหม่มาแล้ว', '🌞 ตื่นมาเจอวันดีๆ นะ', '🍀 ขอให้วันนี้เป็นวันที่ดี', '✨ เช้าแล้วนะคนเก่ง']
+        const pool = lines.length ? lines : greetings
+        const cheer = pool[dayNumber % pool.length]
         const hasNote = true // every day has a love note (custom or one of the 90 rotating messages)
         const noteLine = hasNote ? ' · 💌 มีข้อความรอเปิดอ่านในแอป' : ''
         if (duties.length || hasNote) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: duties.length ? `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}${noteLine}` : `☀️ วันนี้ (${thaiDate(clock.date)}) ไม่มีหน้าที่${noteLine}`, mark: { last_morning_for_date: clock.date } })
