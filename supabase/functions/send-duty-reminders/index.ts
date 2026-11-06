@@ -14,6 +14,11 @@ type PushSubscriptionRow = {
   morning_time: string | null
   last_morning_for_date: string | null
   morning_message: string | null
+  weather_lat: number | null
+  weather_lon: number | null
+  rain_alert: boolean | null
+  work_end: string | null
+  last_rain_alert_for_date: string | null
 }
 
 function localClock(now: Date, timezone: string) {
@@ -67,7 +72,7 @@ Deno.serve(async request => {
   })
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('push_subscriptions')
-    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date,morning_message')
+    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date,morning_message,weather_lat,weather_lon,rain_alert,work_end,last_rain_alert_for_date')
     .eq('enabled', true)
     .limit(500)
 
@@ -107,6 +112,34 @@ Deno.serve(async request => {
       .map(entry => entry.duty)
   }
 
+  // ---- Weather (Open-Meteo, free, no key). Cached per location for this run. ----
+  type Weather = { max: number; min: number; rainMax: number; rainHours: Array<{ h: number; p: number }>; pmMax: number | null }
+  const weatherCache = new Map<string, Promise<Weather | null>>()
+  const getWeather = (lat: number, lon: number) => {
+    const key = `${lat.toFixed(2)},${lon.toFixed(2)}`
+    if (!weatherCache.has(key)) weatherCache.set(key, (async () => {
+      try {
+        const base = `latitude=${lat}&longitude=${lon}&timezone=auto&forecast_days=1`
+        const [fc, aq] = await Promise.all([
+          fetch(`https://api.open-meteo.com/v1/forecast?${base}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability`).then(res => res.json()),
+          fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${base}&hourly=pm2_5`).then(res => res.json()).catch(() => null)
+        ])
+        const rainHours = (fc.hourly?.time ?? []).map((t: string, i: number) => ({ h: Number(t.slice(11, 13)), p: fc.hourly.precipitation_probability[i] ?? 0 }))
+        const pm = (aq?.hourly?.pm2_5 ?? []).filter((v: number | null) => typeof v === 'number') as number[]
+        return { max: fc.daily.temperature_2m_max[0], min: fc.daily.temperature_2m_min[0], rainMax: fc.daily.precipitation_probability_max[0] ?? 0, rainHours, pmMax: pm.length ? Math.round(Math.max(...pm)) : null }
+      } catch (_) { return null }
+    })())
+    return weatherCache.get(key)!
+  }
+  const weatherLine = (w: Weather) => {
+    const parts = [`🌡️ ${Math.round(w.max)}°/${Math.round(w.min)}°`]
+    const wet = w.rainHours.find(x => x.h >= 7 && x.h <= 20 && x.p >= 50)
+    if (w.rainMax >= 50) parts.push(`☂️ ฝน ${w.rainMax}%${wet ? ` ช่วง ${String(wet.h).padStart(2, '0')}:00` : ''} พกร่มนะ`)
+    else if (w.rainMax >= 25) parts.push(`🌂 อาจมีฝน ${w.rainMax}%`)
+    if (w.pmMax !== null && w.pmMax > 37.5) parts.push(`😷 PM2.5 ${w.pmMax} ใส่หน้ากากนะ`)
+    return parts.join(' · ')
+  }
+
   for (const row of subscriptions as PushSubscriptionRow[]) {
     try {
       const clock = localClock(now, row.timezone || 'Asia/Bangkok')
@@ -134,7 +167,23 @@ Deno.serve(async request => {
         const cheer = pool[dayNumber % pool.length]
         const hasNote = true // every day has a love note (custom or one of the 90 rotating messages)
         const noteLine = hasNote ? ' · 💌 มีข้อความรอเปิดอ่านในแอป' : ''
-        if (duties.length || hasNote) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: duties.length ? `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}${noteLine}` : `☀️ วันนี้ (${thaiDate(clock.date)}) ไม่มีหน้าที่${noteLine}`, mark: { last_morning_for_date: clock.date } })
+        const w = row.weather_lat != null && row.weather_lon != null ? await getWeather(row.weather_lat, row.weather_lon) : null
+        const wx = w ? `\n${weatherLine(w)}` : ''
+        if (duties.length || hasNote) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: (duties.length ? `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}${noteLine}` : `☀️ วันนี้ (${thaiDate(clock.date)}) ไม่มีหน้าที่${noteLine}`) + wx, mark: { last_morning_for_date: clock.date } })
+      }
+
+      // Rain alert one hour before leaving work, only on days with duties (= working days).
+      if (row.rain_alert !== false && row.work_end && row.weather_lat != null && row.weather_lon != null && row.last_rain_alert_for_date !== clock.date) {
+        const [eh, em] = row.work_end.slice(0, 5).split(':').map(Number)
+        const endMinute = eh * 60 + em
+        const alertAt = Math.max(0, endMinute - 60)
+        const alertTime = `${String(Math.floor(alertAt / 60)).padStart(2, '0')}:${String(alertAt % 60).padStart(2, '0')}`
+        if (inWindow(clock.minuteOfDay, alertTime) && dutiesFor(row, clock.date).length) {
+          const w = await getWeather(row.weather_lat, row.weather_lon)
+          const commute = (w?.rainHours ?? []).filter(x => x.h >= eh - 1 && x.h <= eh + 2)
+          const worst = commute.reduce((a, b) => (b.p > a.p ? b : a), { h: eh, p: 0 })
+          if (worst.p >= 50) jobs.push({ date: clock.date, title: '☔ ใกล้เลิกงานแล้ว ฝนอาจตก', body: `โอกาสฝน ${worst.p}% ช่วง ${String(worst.h).padStart(2, '0')}:00 เตรียมร่มหรือเรียกรถไว้นะ`, mark: { last_rain_alert_for_date: clock.date } })
+        }
       }
 
       for (const job of jobs) {

@@ -1,0 +1,36 @@
+name: Supabase health check
+
+# Runs every morning (08:00 Bangkok). If Supabase is paused or the reminder
+# function is down, this job fails and GitHub emails the repo owner.
+# The API calls also count as activity, which helps keep the free project awake.
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://gksmldbkagkhljxkyseg.supabase.co
+      # Publishable (public) key — the same one shipped in index.html.
+      SUPABASE_KEY: sb_publishable_hUkZK4KY9nJEXnbkCcTvXQ_59l1g5eh
+    steps:
+      - name: Check Supabase (retries to ignore brief network blips)
+        run: |
+          check() { # name url expected-codes...
+            name=$1; url=$2; shift 2
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" -H "apikey: $SUPABASE_KEY")
+              for ok in "$@"; do [ "$code" = "$ok" ] && { echo "OK   $name ($code)"; return 0; }; done
+              echo "try $attempt: $name returned $code"; sleep 20
+            done
+            echo "FAIL $name"; return 1
+          }
+          status=0
+          check "auth service" "$SUPABASE_URL/auth/v1/health" 200 || status=1
+          # 200 or 401/403 (blocked by RLS) both prove the database answered; 5xx/540 means paused or down.
+          check "database api" "$SUPABASE_URL/rest/v1/shared_schedules?select=id&limit=1" 200 401 403 || status=1
+          # The function only accepts POST from the scheduler, so GET -> 405 means it is deployed and running.
+          check "reminder function" "$SUPABASE_URL/functions/v1/send-duty-reminders" 405 || status=1
+          exit $status

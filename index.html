@@ -404,6 +404,17 @@
     .weather-body { display: grid; gap: 2px; min-width: 0; }
     .weather-main { font-size: 15px; font-weight: 800; }
     .weather-tip { color: #ffe1de; font-size: 13px; font-weight: 600; }
+    .pm-badge { justify-self: start; margin-top: 3px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .pm-badge[hidden] { display: none; }
+    .pm-good { background: #d8f5d0; color: #1f6b2a; }
+    .pm-mid { background: #fff1c2; color: #7a5a00; }
+    .pm-bad { background: #ffd9b8; color: #8a3b00; }
+    .pm-worst { background: #ffd0d0; color: #9b0f16; }
+    .swipe-left { animation: swipe-left .25s ease-out; }
+    .swipe-right { animation: swipe-right .25s ease-out; }
+    @keyframes swipe-left { from { opacity: .3; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+    @keyframes swipe-right { from { opacity: .3; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+    .calendar-card { touch-action: pan-y; }
     /* Love note + countdown */
     .holiday-countdown { width: 100%; margin: 4px 0 0; color: #ffe1de; font-size: 13px; font-weight: 600; }
     .holiday-countdown[hidden], .love-note[hidden] { display: none; }
@@ -483,6 +494,7 @@
         <span class="weather-body">
           <span class="weather-main" id="weatherMain">แตะเพื่อดูอากาศวันนี้</span>
           <span class="weather-tip" id="weatherTip">ใช้ตำแหน่งของมือถือ (ขอครั้งเดียว)</span>
+          <span class="pm-badge" id="pmBadge" hidden></span>
         </span>
       </button>
       <button type="button" class="love-note" id="loveNote" hidden>
@@ -625,6 +637,10 @@
             <label class="checkbox-field morning-toggle"><input id="morningOn" type="checkbox" checked> ☀️ เตือนตอนเช้าว่าวันนี้มีหน้าที่อะไร</label>
             <input id="morningTime" type="time" value="07:30" aria-label="เวลาเตือนตอนเช้า">
             <textarea id="morningMessage" hidden></textarea>
+            <label class="checkbox-field morning-toggle"><input id="rainAlertOn" type="checkbox" checked> ☔ เตือนถ้าฝนจะตกตอนเลิกงาน (เตือนก่อน 1 ชม.)</label>
+            <label class="field-label" for="workEnd">เวลาเลิกงาน</label>
+            <input id="workEnd" type="time" value="16:30">
+            <p class="field-label" id="weatherNeedLocation">🌦️ แจ้งเตือนตอนเช้าจะบอกอากาศและ PM2.5 ด้วย · ต้องแตะการ์ดอากาศในหน้าปฏิทินหนึ่งครั้งก่อน</p>
             <button class="secondary-button" type="button" id="enableNotifications">เปิด / บันทึกการแจ้งเตือน</button>
             <div class="template-actions">
               <button class="secondary-button" type="button" id="testNotification">ทดสอบแจ้งเตือน</button>
@@ -721,7 +737,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.11';
+      const APP_VERSION = '2026-11-06.12';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -874,7 +890,7 @@
           const row = {
             user_id: auth.user.id, schedule_id: cloudScheduleId, endpoint: subscription.endpoint,
             subscription: subscription.toJSON(), reminder_time: $('reminderTime').value || '20:00',
-            reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), last_morning_for_date: null,
+            reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), last_morning_for_date: null, ...weatherFields(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
             enabled: true, last_sent_for_date: null, updated_at: new Date().toISOString(),
             member_name: myName || null
@@ -887,10 +903,15 @@
         } catch (error) { $('notificationStatus').textContent = `เปิดแจ้งเตือนไม่สำเร็จ: ${error.message}`; }
       }
       const REMINDER_PREF_KEY = 'nursing-duty-reminder-pref-v1';
+      function weatherPos() { try { return JSON.parse(localStorage.getItem('nursing-duty-weather-pos-v1') || 'null'); } catch (_) { return null; } }
+      function weatherFields() {
+        const pos = weatherPos();
+        return { rain_alert: $('rainAlertOn').checked, work_end: $('workEnd').value || '16:30', weather_lat: pos?.lat ?? null, weather_lon: pos?.lon ?? null, last_rain_alert_for_date: null };
+      }
       function morningMessageValue() { return null; } // greeting lines are built into the server; love notes stay hidden in the app
       function morningValue() { return $('morningOn').checked ? ($('morningTime').value || '07:30') : null; }
       function saveReminderPref() {
-        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value })); } catch (_) {}
+        try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value, rain: $('rainAlertOn').checked, workEnd: $('workEnd').value })); } catch (_) {}
       }
       function applyReminderPref(time, offset, morning) {
         if (time) $('reminderTime').value = String(time).slice(0, 5);
@@ -910,20 +931,20 @@
           let row = null;
           if (subscription) {
             ({ data: row } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset,morning_time,morning_message,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
+              .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
           }
           if (!row && currentUser) {
             // This device isn't registered yet: use the same time as the account's other devices.
             const { data: rows } = await supabaseClient.from('push_subscriptions')
-              .select('reminder_time,reminder_offset,morning_time,morning_message').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
+              .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
             const shared = rows?.[0];
-            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); if (shared.morning_message) $('morningMessage').value = shared.morning_message; saveReminderPref(); }
+            if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); if (shared.work_end) $('workEnd').value = String(shared.work_end).slice(0, 5); $('rainAlertOn').checked = shared.rain_alert !== false; if (shared.morning_message) $('morningMessage').value = shared.morning_message; saveReminderPref(); }
             if ('Notification' in window && Notification.permission === 'granted') { await enablePushNotifications(); return; }
             if (shared) $('notificationStatus').textContent = `บัญชีนี้เตือนเวลา ${String(shared.reminder_time).slice(0, 5)} · กด "เปิด / บันทึกการแจ้งเตือน" เพื่อรับแจ้งเตือนบนเครื่องนี้ด้วย`;
             return;
           }
           if (!row) return;
-          applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); if (row.morning_message) $('morningMessage').value = row.morning_message; saveReminderPref();
+          applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); if (row.work_end) $('workEnd').value = String(row.work_end).slice(0, 5); $('rainAlertOn').checked = row.rain_alert !== false; if (row.morning_message) $('morningMessage').value = row.morning_message; saveReminderPref();
           if (row.enabled) $('notificationStatus').textContent = `เปิดแจ้งเตือนอยู่ เวลา ${String(row.reminder_time).slice(0, 5)} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
         } catch (_) { /* Keep local values if the server can't be reached. */ }
       }
@@ -931,7 +952,7 @@
       async function syncAccountReminder() {
         if (!supabaseClient || !currentUser) return 0;
         const { data: updated, error } = await supabaseClient.from('push_subscriptions')
-          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), member_name: myName || null, last_sent_for_date: null, last_morning_for_date: null, updated_at: new Date().toISOString() })
+          .update({ reminder_time: $('reminderTime').value || '20:00', reminder_offset: $('reminderOffset').value, morning_time: morningValue(), morning_message: morningMessageValue(), member_name: myName || null, last_sent_for_date: null, last_morning_for_date: null, ...weatherFields(), updated_at: new Date().toISOString() })
           .eq('user_id', currentUser.id).select('id');
         if (error) throw error;
         return updated?.length || 0;
@@ -1314,8 +1335,15 @@
         if (w.rain >= 50) tips.push(`☂️ โอกาสฝน ${w.rain}%${w.rainFrom ? ` ช่วง ${w.rainFrom}` : ''} พกร่มด้วยนะ`);
         else if (w.rain >= 25) tips.push(`🌂 อาจมีฝน ${w.rain}% เผื่อร่มไว้ก็ดี`);
         if (w.max >= 35) tips.push('🥵 ร้อนมาก ดื่มน้ำเยอะๆ นะ');
+        const pmWorst = Math.max(w.pm ?? 0, w.pmMax ?? 0);
+        if (pmWorst > 37.5) tips.push(`😷 PM2.5 ${pmWorst} ใส่หน้ากากนะ`);
         if (!tips.length) tips.push('😊 อากาศดี เดินทางสบาย');
         $('weatherTip').textContent = tips.join(' · ');
+        const pmBadge = $('pmBadge');
+        if (w.pm == null) { pmBadge.hidden = true; } else {
+          const level = w.pm <= 15 ? ['ดีมาก', 'pm-good'] : w.pm <= 25 ? ['ดี', 'pm-good'] : w.pm <= 37.5 ? ['ปานกลาง', 'pm-mid'] : w.pm <= 75 ? ['เริ่มมีผลต่อสุขภาพ', 'pm-bad'] : ['มีผลต่อสุขภาพ', 'pm-worst'];
+          pmBadge.hidden = false; pmBadge.className = `pm-badge ${level[1]}`; pmBadge.textContent = `PM2.5 ${w.pm} · ${level[0]}`;
+        }
         $('weatherCard').classList.add('ready');
       }
       async function loadWeather(askLocation = false) {
@@ -1327,6 +1355,7 @@
             pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
               p => resolve({ lat: +p.coords.latitude.toFixed(2), lon: +p.coords.longitude.toFixed(2) }), reject, { timeout: 15000, maximumAge: 86400000 }));
             writeJSON(WEATHER_POS_KEY, pos);
+            onReminderSettingChange(); // share rounded location so the morning reminder can include weather
           } catch (_) {
             $('weatherMain').textContent = 'ไม่ได้รับสิทธิ์ตำแหน่ง';
             $('weatherTip').textContent = 'เปิดสิทธิ์ตำแหน่งให้แอปนี้ แล้วแตะอีกครั้ง';
@@ -1338,14 +1367,18 @@
         if (cache?.w) renderWeather(cache.w);
         try {
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=auto&forecast_days=1`;
-          const json = await (await fetch(url)).json();
+          const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${pos.lat}&longitude=${pos.lon}&current=pm2_5&hourly=pm2_5&timezone=auto&forecast_days=1`;
+          const [json, aq] = await Promise.all([fetch(url).then(res => res.json()), fetch(aqUrl).then(res => res.json()).catch(() => null)]);
+          const pmHours = (aq?.hourly?.pm2_5 || []).filter(v => typeof v === 'number');
           const hours = (json.hourly?.time || []).map((t, i) => ({ h: Number(t.slice(11, 13)), p: json.hourly.precipitation_probability[i] }));
           const wet = hours.find(x => x.h >= new Date().getHours() && x.h <= 20 && x.p >= 50);
           const w = {
             temp: json.current.temperature_2m, code: json.current.weather_code,
             max: json.daily.temperature_2m_max[0], min: json.daily.temperature_2m_min[0],
             rain: json.daily.precipitation_probability_max[0] ?? 0,
-            rainFrom: wet ? `${String(wet.h).padStart(2, '0')}:00` : ''
+            rainFrom: wet ? `${String(wet.h).padStart(2, '0')}:00` : '',
+            pm: typeof aq?.current?.pm2_5 === 'number' ? Math.round(aq.current.pm2_5) : null,
+            pmMax: pmHours.length ? Math.round(Math.max(...pmHours)) : null
           };
           writeJSON(WEATHER_CACHE_KEY, { at: Date.now(), day: dateKey(new Date()), w });
           renderWeather(w);
@@ -1762,6 +1795,21 @@
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
       $('loveNote').addEventListener('click', openLoveNote);
+      // Swipe left/right on the calendar to change month (or week in week view).
+      (() => {
+        const area = document.querySelector('.calendar-card'); let sx = 0, sy = 0, tracking = false;
+        area.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = e.touches.length === 1; }, { passive: true });
+        area.addEventListener('touchend', e => {
+          if (!tracking) return; tracking = false;
+          const t = e.changedTouches[0]; const dx = t.clientX - sx; const dy = t.clientY - sy;
+          if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+          const forward = dx < 0;
+          const grid = activeView === 'week' ? $('weekList') : $('daysGrid');
+          grid.classList.remove('swipe-left', 'swipe-right'); void grid.offsetWidth;
+          $(activeView === 'week' ? (forward ? 'nextWeek' : 'prevWeek') : (forward ? 'nextMonth' : 'prevMonth')).click();
+          grid.classList.add(forward ? 'swipe-left' : 'swipe-right');
+        }, { passive: true });
+      })();
       $('weatherCard').addEventListener('click', () => { writeJSON(WEATHER_CACHE_KEY, null); loadWeather(true); });
       loadWeather(false);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadWeather(false); });
@@ -1872,8 +1920,10 @@
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
       $('morningTime').addEventListener('change', onReminderSettingChange);
       $('morningMessage').addEventListener('change', onReminderSettingChange);
+      $('rainAlertOn').addEventListener('change', () => { $('workEnd').disabled = !$('rainAlertOn').checked; onReminderSettingChange(); });
+      $('workEnd').addEventListener('change', onReminderSettingChange);
       $('morningOn').addEventListener('change', () => { $('morningTime').disabled = !$('morningOn').checked; onReminderSettingChange(); });
-      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) { applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); if (typeof pref.message === 'string') $('morningMessage').value = pref.message; } } catch (_) {}
+      try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) { applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); if (typeof pref.message === 'string') $('morningMessage').value = pref.message; if (typeof pref.rain === 'boolean') $('rainAlertOn').checked = pref.rain; if (pref.workEnd) $('workEnd').value = pref.workEnd; } } catch (_) {}
       $('copyShareCode').addEventListener('click', async () => {
         const code = $('currentShareCode').textContent.replace(/^รหัสเชิญ:\s*/, '');
         try { await navigator.clipboard.writeText(code); syncStatus('คัดลอกรหัสเชิญแล้ว'); }

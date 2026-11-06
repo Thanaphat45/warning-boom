@@ -44,6 +44,12 @@ alter table public.push_subscriptions add column if not exists member_name text 
 alter table public.push_subscriptions add column if not exists morning_time time;
 alter table public.push_subscriptions add column if not exists last_morning_for_date date;
 alter table public.push_subscriptions add column if not exists morning_message text check (char_length(morning_message) <= 500);
+-- Weather for morning summary + rain alert before leaving work (rounded coordinates only).
+alter table public.push_subscriptions add column if not exists weather_lat double precision;
+alter table public.push_subscriptions add column if not exists weather_lon double precision;
+alter table public.push_subscriptions add column if not exists rain_alert boolean not null default true;
+alter table public.push_subscriptions add column if not exists work_end time default '16:30';
+alter table public.push_subscriptions add column if not exists last_rain_alert_for_date date;
 
 create index if not exists push_subscriptions_due_idx
   on public.push_subscriptions (enabled, schedule_id)
