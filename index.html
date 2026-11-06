@@ -413,6 +413,10 @@
     .note-list { display: grid; gap: 6px; margin-top: 12px; }
     .note-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .note-row span { color: var(--muted); font-size: 12px; }
+    .secret-heart { display: inline-block; padding: 4px; cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .secret-sheet { position: fixed; left: 50%; top: 50%; z-index: 30; width: min(440px, calc(100% - 24px)); max-height: calc(100dvh - 40px); overflow-y: auto; transform: translate(-50%, -50%); box-shadow: 0 30px 80px #2b151366; }
+    .secret-sheet[hidden] { display: none; }
+    .secret-close { margin-left: auto; order: 3; }
     /* Template card */
     .step { display: flex; gap: 12px; padding: 12px 0; border-top: 1px dashed var(--line); }
     .step-no { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; font-size: 14px; }
@@ -553,16 +557,6 @@
         <p class="template-copy" id="templateStatus" aria-live="polite"></p>
       </section>
 
-      <section class="card note-card">
-        <div class="card-head"><span class="card-icon">💌</span><div><h3>ข้อความลับรายวัน</h3><p>ทุกวันมีข้อความดีๆ สุ่มให้ (90 ข้อความ ไม่ซ้ำภายใน 3 เดือน) · อยากเขียนเองวันไหน ตั้งไว้ด้านล่าง จะใช้แทนข้อความสุ่มของวันนั้น</p></div></div>
-        <div class="note-form">
-          <input id="noteDate" type="date" aria-label="วันที่จะให้ข้อความขึ้น">
-          <textarea id="noteText" class="morning-message" rows="3" maxlength="300" placeholder="เช่น วันนี้เหนื่อยไหม เลิกงานแล้วไปกินชาบูกันนะ 🍲"></textarea>
-          <button class="primary-button" type="button" id="saveNote">บันทึกข้อความ</button>
-          <p class="template-copy" id="noteStatus" aria-live="polite"></p>
-        </div>
-        <div class="note-list" id="noteList"></div>
-      </section>
 
       <section class="card">
         <div class="card-head"><span class="card-icon">📤</span><div><h3>แชร์ตาราง</h3><p>ส่งรูปเดือนหรือสัปดาห์ที่เปิดดูอยู่</p></div></div>
@@ -637,9 +631,20 @@
           <input type="file" id="importBackupFile" accept=".json,application/json" hidden>
         </div>
       </section>
-      <footer>ตารางหน้าที่ของฉัน ❤️<br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
+      <footer>ตารางหน้าที่ของฉัน <span id="secretHeart" class="secret-heart">❤️</span><br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
     </div>
   </main>
+
+      <section class="card note-card secret-sheet" id="secretSheet" hidden>
+        <div class="card-head"><span class="card-icon">💌</span><button class="close-button secret-close" type="button" id="closeSecret" aria-label="ปิด">×</button><div><h3>🤫 ข้อความลับรายวัน</h3><p>ทุกวันมีข้อความดีๆ สุ่มให้ (90 ข้อความ ไม่ซ้ำภายใน 3 เดือน) · อยากเขียนเองวันไหน ตั้งไว้ด้านล่าง จะใช้แทนข้อความสุ่มของวันนั้น</p></div></div>
+        <div class="note-form">
+          <input id="noteDate" type="date" aria-label="วันที่จะให้ข้อความขึ้น">
+          <textarea id="noteText" class="morning-message" rows="3" maxlength="300" placeholder="เช่น วันนี้เหนื่อยไหม เลิกงานแล้วไปกินชาบูกันนะ 🍲"></textarea>
+          <button class="primary-button" type="button" id="saveNote">บันทึกข้อความ</button>
+          <p class="template-copy" id="noteStatus" aria-live="polite"></p>
+        </div>
+        <div class="note-list" id="noteList"></div>
+      </section>
 
   <nav class="bottom-nav" aria-label="เมนูหลัก">
     <button type="button" class="nav-item active" data-tab="calendar"><span class="nav-icon">📅</span><span>ปฏิทิน</span></button>
@@ -703,7 +708,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.9';
+      const APP_VERSION = '2026-11-06.10';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -1686,6 +1691,15 @@
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
       $('loveNote').addEventListener('click', openLoveNote);
+      // Secret entrance: tap the footer heart 5 times quickly.
+      let heartTaps = 0, heartTimer = null;
+      $('secretHeart').addEventListener('click', () => {
+        heartTaps++; clearTimeout(heartTimer); heartTimer = setTimeout(() => { heartTaps = 0; }, 1500);
+        if (heartTaps < 5) return;
+        heartTaps = 0; renderNoteEditor(); $('noteStatus').textContent = ''; $('noteText').value = '';
+        $('secretSheet').hidden = false; $('secretSheet').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      $('closeSecret').addEventListener('click', () => { $('secretSheet').hidden = true; $('noteText').value = ''; });
       $('saveNote').addEventListener('click', saveNote);
       $('noteDate').value = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return dateKey(t); })();
       // Bottom navigation
@@ -1695,7 +1709,8 @@
         document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === name));
         try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
         if (focus) focus.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0 });
-        if (name === 'duties') { renderTemplates(); renderNoteEditor(); }
+        if (name === 'duties') renderTemplates();
+        $('secretSheet').hidden = true;
       }
       document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => showTab(item.dataset.tab)));
       try { const savedTab = localStorage.getItem(TAB_KEY); if (savedTab && $(`view-${savedTab}`)) showTab(savedTab); } catch (_) {}
