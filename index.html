@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#171b19">
+  <meta name="theme-color" content="#e5383b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
@@ -274,6 +274,8 @@
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
     @media print {
+      .bottom-nav { display: none !important; }
+      #view-calendar { display: block !important; }
       @page { size: A4 landscape; margin: 6mm; }
       :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #fff; --line: #d4d9d5; --text: #18211a; --muted: #55625a; }
       body { min-height: auto; background: #fff; color: #18211a; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
@@ -310,6 +312,121 @@
       .duty-row { border-color: #e0e5e0; }
       .monthly-duty-summary { margin-top: 12px; }
     }
+
+    /* ===== Red & white theme + app layout ===== */
+    :root {
+      color-scheme: light;
+      --bg: #fff6f5; --panel: #ffffff; --panel-2: #fff0ee; --line: #f1d3cf;
+      --text: #2b1513; --muted: #8c6662;
+      --green: #e5383b; --green-strong: #c81d25; --ink: #ffffff; --red-soft: #ffe3e0;
+      --radius: 20px;
+      font-family: "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
+    }
+    body { background: linear-gradient(180deg, #ffe9e6 0, #fff6f5 260px) fixed; color: var(--text); }
+    .shell { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    header { margin-bottom: 16px; }
+    .brand-mark { background: linear-gradient(135deg, #ff5a5f, #c81d25); color: #fff; box-shadow: 0 8px 18px #e5383b40; }
+    .brand-name { color: var(--text); }
+    .status-pill, .today-button { background: #fff; border: 1px solid var(--line); color: var(--text); box-shadow: 0 2px 8px #c81d2512; }
+    .status-pill.ok { background: #fff; border-color: #e5383b55; color: var(--green-strong); }
+    .status-pill.warn { background: #fff7e6; border-color: #f0b44c80; }
+    .view { animation: view-in .25s ease-out; }
+    .view[hidden] { display: none !important; }
+    @keyframes view-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .card, .calendar-card, .today-card { margin-bottom: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; box-shadow: 0 6px 22px #c81d2510; }
+    .card-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .card-head h3 { margin: 0; font-size: 17px; color: var(--text); }
+    .card-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .card-icon { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 12px; background: var(--red-soft); font-size: 20px; }
+    .today-card.today-hero { background: linear-gradient(135deg, #e5383b, #b5121b); border: 0; color: #fff; box-shadow: 0 12px 28px #c81d2540; }
+    .today-hero .today-kicker { color: #ffd6d3; }
+    .today-hero .today-big-date { color: #fff; }
+    .today-hero .today-sub { color: #ffe1de; }
+    .today-hero .today-holiday { background: #ffffff26; color: #fff; }
+    .today-hero .today-empty { background: #ffffff1f; color: #fff; }
+    .today-tile { box-shadow: 0 4px 12px #0000001f; }
+    .today-hero .today-add { background: #fff; color: var(--green-strong); }
+    .today-hero .today-scroll { color: #ffe1de; }
+    .primary-button { background: var(--green); color: #fff; border: 0; box-shadow: 0 6px 14px #e5383b33; }
+    .primary-button:hover { background: var(--green-strong); }
+    .secondary-button, .icon-button { background: #fff; color: var(--text); border: 1px solid var(--line); }
+    .secondary-button:hover, .icon-button:hover { background: var(--panel-2); }
+    .ghost-button { padding: 0 14px; min-height: 42px; border: 1px solid var(--line); border-radius: 12px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+    input, select, textarea, .add-duty input, .field input, .field select, .sync-controls input, .sync-controls select, .template-controls input, .template-controls select, .morning-message, .card select, .card input {
+      background: #fff !important; color: var(--text) !important; border: 1px solid var(--line) !important; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #e5383b55; border-color: var(--green) !important; }
+    .view-tabs { background: var(--panel-2); border: 0; }
+    .view-tab { color: var(--muted); }
+    .view-tab.active { background: #fff; color: var(--green-strong); box-shadow: 0 2px 8px #c81d2518; border-color: transparent; }
+    .month-title h2 { color: var(--text); }
+    .weekdays span { color: var(--muted); }
+    .day { background: #fff; border: 1px solid #f6e3e0; color: var(--text); }
+    .day:hover { background: var(--panel-2); border-color: var(--line); }
+    .day.today .date-number { background: var(--green); color: #fff; }
+    .day.holiday { background: #fff0ee; border-color: #f5b5ae; }
+    .day.holiday .date-number, .holiday-label { color: #d62828; }
+    .day.today.holiday .date-number { color: #fff; }
+    .day-label { color: var(--muted); }
+    .chip { color: #2b1513 !important; }
+    .chip.more { background: var(--panel-2); color: var(--muted) !important; }
+    .week-day { background: #fff; border-color: var(--line); }
+    .week-day-head { color: var(--muted); }
+    .week-day-head button { color: var(--green-strong); }
+    .task-row { background: #fff; border-color: var(--line); }
+    .today-empty, .week-empty { background: var(--panel-2); color: var(--muted); }
+    .duty-row { background: #fff; border-color: var(--line); }
+    .remove-duty { color: var(--muted); }
+    .monthly-duty-row { border-color: var(--line); }
+    .monthly-duty-row strong, .summary-total { color: var(--green-strong); }
+    .hint { background: var(--panel-2); color: var(--muted); }
+    .sync-status, .template-copy, .sync-copy, .field-label, .muted-copy { color: var(--muted); }
+    .sync-advanced summary { color: var(--muted); }
+    .sync-panel { margin-top: 0; padding-top: 18px; border-top: 1px solid var(--line); }
+    .sync-code { background: var(--panel-2); color: var(--text); }
+    .sync-controls .morning-toggle { color: var(--text); }
+    .overlay { background: #2b151366; }
+    .dialog { background: #fff; border-color: var(--line); color: var(--text); box-shadow: 0 25px 60px #2b151340; }
+    .dialog-head p, .field label { color: var(--muted); }
+    .close-button { background: var(--panel-2); color: var(--text); border: 0; }
+    .text-button { color: var(--green-strong); background: var(--panel-2); }
+    .delete-button { color: #c81d25; background: #fff0ee; border-color: #f5b5ae; }
+    .day-entry { background: #fff; border-color: var(--line); color: var(--text); }
+    .day-entry.active { border-color: var(--green); background: #fff0ee; }
+    .add-new-entry { color: var(--green-strong); border-color: #f5b5ae; }
+    .duty-pick { color: #2b1513; }
+    .duty-pick[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px var(--green-strong); }
+    .version-button { color: var(--muted); border-color: var(--line); }
+    footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
+    .update-banner { background: var(--green); color: #fff; bottom: calc(84px + env(safe-area-inset-bottom)); }
+    /* Template card */
+    .step { display: flex; gap: 12px; padding: 12px 0; border-top: 1px dashed var(--line); }
+    .step-no { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; font-size: 14px; }
+    .step-body { display: grid; gap: 8px; flex: 1; min-width: 0; }
+    .step-body strong { font-size: 15px; }
+    .step-hint { margin: 0; color: var(--muted); font-size: 13px; }
+    .step-hint b { color: var(--green-strong); }
+    .inline-form { display: flex; gap: 8px; }
+    .inline-form input { flex: 1; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 12px; }
+    .inline-form .primary-button { min-height: 42px; padding: 0 16px; border-radius: 12px; white-space: nowrap; }
+    .step-body select { min-height: 42px; padding: 0 10px; border-radius: 12px; }
+    .template-preview { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .tp-day { display: grid; align-content: start; gap: 3px; min-height: 60px; padding: 5px 3px; border-radius: 10px; background: var(--panel-2); text-align: center; }
+    .tp-name { color: var(--muted); font-size: 11px; font-weight: 700; }
+    .tp-chip { overflow: hidden; padding: 2px 3px; border-radius: 6px; color: #2b1513; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .tp-empty { color: #d9b9b5; }
+    .share-button { margin-top: 0; }
+    .print-button { width: 100%; margin-top: 8px; }
+    .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    /* Single-user: hide team-only UI */
+    .filter-bar, #memberSummaryTitle, #memberCounts { display: none !important; }
+    .field:has(#assigneeSelect) { display: none; }
+    /* Bottom navigation */
+    .bottom-nav { position: fixed; left: 50%; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); width: min(520px, 100%); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #ffffffee; backdrop-filter: blur(12px); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px #c81d2512; }
+    .nav-item { display: grid; justify-items: center; gap: 2px; padding: 6px 0; border: 0; border-radius: 14px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .nav-item .nav-icon { font-size: 22px; filter: grayscale(1); opacity: .6; transition: transform .2s; }
+    .nav-item.active { color: var(--green-strong); background: var(--red-soft); }
+    .nav-item.active .nav-icon { filter: none; opacity: 1; transform: scale(1.1); }
+    @media (min-width: 900px) { .view { max-width: 760px; margin: 0 auto; } }
   </style>
 </head>
 <body>
@@ -325,10 +442,7 @@
       </div>
     </header>
 
-    <section class="intro">
-      <div><h1>ปฏิทินหน้าที่</h1><p>แตะวันที่เพื่อเพิ่มหรือแก้ไขหน้าที่ของคุณ</p></div>
-    </section>
-
+    <div class="view" id="view-calendar">
     <section class="today-card today-hero" aria-labelledby="todayHeading">
       <div class="today-hero-top">
         <p class="today-kicker">หน้าที่วันนี้</p>
@@ -343,7 +457,6 @@
       </div>
     </section>
 
-    <div class="layout">
       <section class="calendar-card" aria-label="ปฏิทินรายเดือน">
         <div class="filter-bar" id="filterBar" hidden>
           <span class="me-label" id="meLabel"></span>
@@ -371,38 +484,63 @@
         <div class="week-list" id="weekList"></div>
         <div class="mobile-note">แตะวันที่เพื่อเพิ่มหน้าที่</div>
       </section>
+    </div>
 
-      <aside class="side-card">
-        <h3>หน้าที่ที่ใช้บ่อย</h3>
-        <p class="muted-copy">เพิ่มรายการไว้เลือกตอนบันทึก ไม่ต้องพิมพ์ซ้ำทุกครั้ง</p>
+    <div class="view" id="view-duties" hidden>
+      <section class="card">
+        <div class="card-head"><span class="card-icon">📌</span><div><h3>หน้าที่ที่ใช้บ่อย</h3><p>รายการที่เลือกได้ตอนลงเวร</p></div></div>
         <div class="duty-list" id="dutyList"></div>
         <form class="add-duty" id="addDutyForm">
-          <input id="newDuty" maxlength="32" placeholder="เพิ่มหน้าที่ใหม่" aria-label="ชื่อหน้าที่ใหม่">
+          <input id="newDuty" maxlength="32" placeholder="เพิ่มหน้าที่ใหม่ เช่น ห้องยา" aria-label="ชื่อหน้าที่ใหม่">
           <button class="icon-button" type="submit" aria-label="เพิ่มหน้าที่">＋</button>
         </form>
-        <section class="monthly-duty-summary" aria-live="polite">
-          <h4>สรุปเวรเดือนนี้ <span class="summary-total" id="summaryTotal"></span></h4>
-          <div class="monthly-duty-counts" id="monthlyDutyCounts"></div>
-          <h4 class="member-summary-title" id="memberSummaryTitle" hidden>แบ่งเวรรายคน</h4>
-          <div class="member-counts" id="memberCounts"></div>
-        </section>
-        <details class="template-panel">
-          <summary>แม่แบบรายสัปดาห์</summary>
-          <p class="template-copy">บันทึกสัปดาห์ที่จัดไว้แล้ว แล้วนำไปใช้กับสัปดาห์อื่นได้</p>
-          <div class="template-controls">
-            <input id="templateName" maxlength="32" placeholder="ชื่อแม่แบบ เช่น ตารางปกติ">
-            <button class="secondary-button" type="button" id="saveTemplate">บันทึกสัปดาห์นี้เป็นแม่แบบ</button>
-            <select id="templateSelect" aria-label="เลือกแม่แบบ"></select>
-            <div class="template-actions">
-              <button class="secondary-button" type="button" id="applyTemplate">ใช้กับสัปดาห์นี้</button>
-              <button class="secondary-button" type="button" id="deleteTemplate">ลบแม่แบบ</button>
+      </section>
+
+      <section class="card monthly-duty-summary" aria-live="polite">
+        <div class="card-head"><span class="card-icon">📊</span><div><h3>สรุปเวรเดือนนี้ <span class="summary-total" id="summaryTotal"></span></h3><p>นับจากเดือนที่เปิดดูในปฏิทิน</p></div></div>
+        <div class="monthly-duty-counts" id="monthlyDutyCounts"></div>
+        <h4 class="member-summary-title" id="memberSummaryTitle" hidden></h4>
+        <div class="member-counts" id="memberCounts" hidden></div>
+      </section>
+
+      <section class="card template-card">
+        <div class="card-head"><span class="card-icon">🗓️</span><div><h3>แม่แบบสัปดาห์</h3><p>จัดสัปดาห์ไว้ครั้งเดียว แล้วกดใช้ซ้ำกับสัปดาห์ไหนก็ได้</p></div></div>
+        <div class="step">
+          <span class="step-no">1</span>
+          <div class="step-body">
+            <strong>เก็บสัปดาห์นี้เป็นแม่แบบ</strong>
+            <p class="step-hint">สัปดาห์ที่เก็บ: <b id="templateWeekLabel"></b></p>
+            <div class="inline-form">
+              <input id="templateName" maxlength="32" placeholder="ตั้งชื่อ เช่น สัปดาห์ปกติ">
+              <button class="primary-button" type="button" id="saveTemplate">เก็บ</button>
             </div>
-            <p class="template-copy" id="templateStatus" aria-live="polite"></p>
           </div>
-        </details>
-        <details class="sync-panel">
-          <summary>ใช้ร่วมกันหลายเครื่อง</summary>
-          <p class="sync-copy">ตั้งค่า Supabase จากบัญชีของคุณก่อน แต่ละคนเข้าสู่ระบบด้วยอีเมลของตัวเอง แล้วใช้รหัสเชิญเพื่อเปิดตารางเดียวกัน</p>
+        </div>
+        <div class="step">
+          <span class="step-no">2</span>
+          <div class="step-body">
+            <strong>ใช้แม่แบบกับสัปดาห์ที่กำลังดู</strong>
+            <select id="templateSelect" aria-label="เลือกแม่แบบ"></select>
+            <div class="template-preview" id="templatePreview"></div>
+            <div class="inline-form">
+              <button class="primary-button" type="button" id="applyTemplate">ใส่ลงสัปดาห์ <span id="applyWeekLabel"></span></button>
+              <button class="ghost-button" type="button" id="deleteTemplate">ลบ</button>
+            </div>
+          </div>
+        </div>
+        <p class="template-copy" id="templateStatus" aria-live="polite"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><span class="card-icon">📤</span><div><h3>แชร์ตาราง</h3><p>ส่งรูปเดือนหรือสัปดาห์ที่เปิดดูอยู่</p></div></div>
+        <button class="primary-button share-button" type="button" id="shareImage">📤 แชร์รูปตาราง (LINE)</button>
+        <button class="secondary-button print-button" type="button" id="printSchedule">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+      </section>
+    </div>
+
+    <div class="view" id="view-settings" hidden>
+      <section class="card sync-panel">
+        <div class="card-head"><span class="card-icon">👤</span><div><h3>บัญชีและการซิงก์</h3><p>ล็อกอินบัญชีเดียวกันทุกเครื่อง เพื่อเห็นตารางเดียวกัน</p></div></div>
           <details class="sync-advanced">
           <summary>ตั้งค่าขั้นสูง (ฐานข้อมูล)</summary>
           <div class="sync-controls">
@@ -435,10 +573,10 @@
             <button class="secondary-button" type="button" id="copyShareCode" hidden>คัดลอกรหัสเชิญ</button>
           </div>
           <p class="sync-status" id="syncStatus" aria-live="polite">ยังไม่ได้เชื่อมต่อ</p>
-        </details>
-        <details class="sync-panel">
-          <summary>แจ้งเตือนบนโทรศัพท์</summary>
-          <p class="sync-copy">เตือนเฉพาะเวรของคุณ (ตามชื่อในบัญชี) และเวรที่ยังไม่ระบุผู้รับผิดชอบ · ค่าเริ่มต้นเตือนเวลา 20:00 คืนก่อนวันที่มีหน้าที่ ต้องเผยแพร่เว็บแบบ HTTPS, เข้าร่วมตารางร่วมกัน และอนุญาตแจ้งเตือนบนโทรศัพท์ก่อน</p>
+      </section>
+
+      <section class="card sync-panel">
+        <div class="card-head"><span class="card-icon">🔔</span><div><h3>แจ้งเตือน</h3><p>เตือนคืนก่อนวันมีหน้าที่ และตอนเช้าพร้อมข้อความให้กำลังใจ</p></div></div>
           <div class="sync-controls">
             <label class="field-label" for="reminderOffset">เตือนเมื่อ</label>
             <select id="reminderOffset"><option value="day_before">คืนก่อนวันมีหน้าที่</option><option value="same_day">เช้าวันที่มีหน้าที่</option></select>
@@ -458,20 +596,27 @@
             </div>
           </div>
           <p class="sync-status" id="notificationStatus" aria-live="polite">ยังไม่ได้เปิดการแจ้งเตือน</p>
-        </details>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><span class="card-icon">💾</span><div><h3>ข้อมูล</h3><p>สำรองไว้เป็นไฟล์ หรือนำกลับมาใช้</p></div></div>
         <span id="monthCount" hidden>0</span>
-        <div class="hint" id="storageHint">ข้อมูลบันทึกไว้ในเครื่องนี้ · เข้าสู่ระบบและเข้าร่วมตารางที่แชร์เพื่อซิงก์หลายเครื่อง</div>
+        <div class="hint" id="storageHint">ข้อมูลบันทึกไว้ในเครื่องนี้</div>
         <div class="backup-actions">
           <button class="secondary-button" type="button" id="exportBackup">สำรองข้อมูล</button>
           <button class="secondary-button" type="button" id="importBackupButton">นำเข้าข้อมูลสำรอง</button>
           <input type="file" id="importBackupFile" accept=".json,application/json" hidden>
         </div>
-        <button class="primary-button share-button" type="button" id="shareImage">📤 แชร์รูปตาราง (LINE)</button>
-        <button class="secondary-button print-button" type="button" id="printSchedule">พิมพ์ / บันทึกเป็น PDF</button>
-      </aside>
+      </section>
+      <footer>ตารางหน้าที่ของฉัน ❤️<br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
     </div>
-    <footer>ตารางหน้าที่ • บันทึกในเครื่องเสมอ และซิงก์ขึ้นคลาวด์เมื่อเข้าร่วมตารางที่แชร์<br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
   </main>
+
+  <nav class="bottom-nav" aria-label="เมนูหลัก">
+    <button type="button" class="nav-item active" data-tab="calendar"><span class="nav-icon">📅</span><span>ปฏิทิน</span></button>
+    <button type="button" class="nav-item" data-tab="duties"><span class="nav-icon">📌</span><span>หน้าที่</span></button>
+    <button type="button" class="nav-item" data-tab="settings"><span class="nav-icon">⚙️</span><span>ตั้งค่า</span></button>
+  </nav>
 
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
     <form class="dialog" id="entryForm">
@@ -529,7 +674,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.4';
+      const APP_VERSION = '2026-11-06.5';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -614,8 +759,9 @@
         if (value.templates !== undefined) {
           if (!value.templates || typeof value.templates !== 'object' || Array.isArray(value.templates)) return false;
           for (const template of Object.values(value.templates)) {
+            const okEntry = item => item && typeof item.duty === 'string' && typeof (item.note || '') === 'string';
             if (!template || typeof template.name !== 'string' || !Array.isArray(template.days) || template.days.length !== 7 ||
-                !template.days.every(day => day === null || (day && typeof day.duty === 'string' && typeof (day.note || '') === 'string'))) return false;
+                !template.days.every(day => day === null || (Array.isArray(day) ? day.every(okEntry) : okEntry(day)))) return false;
           }
         }
         return !value.colors || (typeof value.colors === 'object' && !Array.isArray(value.colors) &&
@@ -1203,7 +1349,27 @@
           list.append(day);
         }
       }
+      function weekRangeLabel() {
+        const start = weekStart(selectedDate); const end = new Date(start); end.setDate(start.getDate() + 6);
+        const short = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' });
+        return `${short.format(start)} – ${short.format(end)}`;
+      }
+      function renderTemplatePreview() {
+        const box = $('templatePreview'); if (!box) return; box.replaceChildren();
+        const template = data.templates?.[$('templateSelect').value]; if (!template) return;
+        ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].forEach((name, index) => {
+          const day = template.days[index]; const list = Array.isArray(day) ? day : (day ? [day] : []);
+          const col = document.createElement('div'); col.className = 'tp-day';
+          const head = document.createElement('span'); head.className = 'tp-name'; head.textContent = name; col.append(head);
+          if (!list.length) { const dash = document.createElement('span'); dash.className = 'tp-empty'; dash.textContent = '–'; col.append(dash); }
+          list.forEach(item => { const dot = document.createElement('span'); dot.className = 'tp-chip'; dot.textContent = item.duty; dot.style.backgroundColor = colorForDuty(item.duty); col.append(dot); });
+          box.append(col);
+        });
+      }
       function renderTemplates() {
+        if ($('templateWeekLabel')) $('templateWeekLabel').textContent = weekRangeLabel();
+        if ($('applyWeekLabel')) $('applyWeekLabel').textContent = weekRangeLabel();
+        setTimeout(renderTemplatePreview, 0);
         const select = $('templateSelect'); const previous = select.value; select.replaceChildren();
         const templates = Object.entries(data.templates || {});
         if (!templates.length) {
@@ -1220,8 +1386,8 @@
         const start = weekStart(selectedDate);
         const days = Array.from({ length: 7 }, (_, index) => {
           const date = new Date(start); date.setDate(start.getDate() + index);
-          const entry = data.entries[dateKey(date)]?.[0];
-          return entry ? { duty: entry.duty, note: entry.note || '' } : null;
+          const list = (data.entries[dateKey(date)] || []).map(entry => ({ duty: entry.duty, note: entry.note || '' }));
+          return list.length ? list : null;
         });
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         data.templates[id] = { name, days }; save(); renderTemplates(); $('templateSelect').value = id;
@@ -1234,8 +1400,9 @@
         const start = weekStart(selectedDate);
         for (let index = 0; index < 7; index++) {
           const date = new Date(start); date.setDate(start.getDate() + index); const key = dateKey(date);
-          const entry = template.days[index];
-          if (entry) data.entries[key] = [{ duty: entry.duty, note: entry.note || '', done: false }];
+          const day = template.days[index];
+          const list = Array.isArray(day) ? day : (day ? [day] : []);
+          if (list.length) data.entries[key] = list.map(entry => ({ duty: entry.duty, note: entry.note || '', done: false }));
           else delete data.entries[key];
         }
         save(); renderAll(); $('templateStatus').textContent = `ใช้แม่แบบ “${template.name}” แล้ว`;
@@ -1263,6 +1430,7 @@
         renderDutySummary();
       }
       function renderMemberSummary() {
+        return; // single-user app: per-person summary removed
         const container = $('memberCounts'); if (!container) return; container.replaceChildren();
         const year = shownMonth.getFullYear(); const month = shownMonth.getMonth();
         const perMember = new Map(); let unassigned = 0;
@@ -1419,10 +1587,22 @@
       document.querySelectorAll('.view-tab').forEach(button => button.addEventListener('click', () => { setView(button.dataset.view); renderWeek(); }));
       $('saveTemplate').addEventListener('click', saveWeekTemplate);
       $('applyTemplate').addEventListener('click', applyWeekTemplate);
+      $('templateSelect').addEventListener('change', renderTemplatePreview);
       $('deleteTemplate').addEventListener('click', deleteWeekTemplate);
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
-      $('scrollCalendar').addEventListener('click', () => document.querySelector('.layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      // Bottom navigation
+      const TAB_KEY = 'nursing-duty-tab-v1';
+      function showTab(name, focus) {
+        document.querySelectorAll('.view').forEach(view => { view.hidden = view.id !== `view-${name}`; });
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === name));
+        try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
+        if (focus) focus.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0 });
+        if (name === 'duties') renderTemplates();
+      }
+      document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => showTab(item.dataset.tab)));
+      try { const savedTab = localStorage.getItem(TAB_KEY); if (savedTab && $(`view-${savedTab}`)) showTab(savedTab); } catch (_) {}
+      $('scrollCalendar').addEventListener('click', () => document.querySelector('.calendar-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       $('deleteSeries').addEventListener('click', () => {
         const item = (data.entries[selectedKey] || [])[editIndex]; if (!item?.seriesId) return;
         const keys = Object.keys(data.entries).filter(key => key >= selectedKey && data.entries[key].some(e => e.seriesId === item.seriesId));
@@ -1494,8 +1674,8 @@
       $('reminderTime').addEventListener('change', onReminderSettingChange);
       ['syncStatus', 'notificationStatus'].forEach(id => new MutationObserver(updateStatusPill).observe($(id), { childList: true, characterData: true, subtree: true }));
       $('statusPill').addEventListener('click', () => {
-        const target = !currentUser || !cloudScheduleId ? $('syncStatus').closest('details') : $('notificationStatus').closest('details');
-        if (target) { target.open = true; target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        const target = !currentUser || !cloudScheduleId ? $('syncStatus').closest('.card') : $('notificationStatus').closest('.card');
+        showTab('settings', target);
       });
       updateStatusPill();
       checkForUpdate();
@@ -1614,7 +1794,7 @@
       } catch (_) { /* Ignore an invalid local sync configuration. */ }
       // Connect automatically so users only need email + password.
       if ($('supabaseUrl').value && $('supabaseAnonKey').value) connectSupabase();
-      else $('supabaseUrl').closest('details').open = true;
+      else { $('supabaseUrl').closest('details').open = true; }
       if (window.isSecureContext && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js', { scope: './' })
           .then(registration => { serviceWorkerRegistration = registration; })
