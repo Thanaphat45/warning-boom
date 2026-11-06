@@ -59,7 +59,10 @@
     .day-entry .who { color: var(--muted); }
     .day-entries-title { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
     .add-new-entry { justify-self: start; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 10px; background: none; color: var(--green-strong, #8dde83); font: inherit; font-size: 13px; cursor: pointer; }
-    .update-banner { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%); padding: 12px 18px; border: 0; border-radius: 999px; background: var(--green, #8dde83); color: #17211a; font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 30px #0008; cursor: pointer; }
+    .version-button { margin-top: 8px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+    .update-banner { animation: banner-in .35s ease-out; }
+    @keyframes banner-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .update-banner { white-space: nowrap; position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%); padding: 12px 18px; border: 0; border-radius: 999px; background: var(--green, #8dde83); color: #17211a; font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 30px #0008; cursor: pointer; }
     .sync-controls .morning-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; margin-top: 8px; color: var(--text); font-size: 14px; text-align: left; }
     .sync-controls .morning-toggle input { flex: 0 0 auto; width: 20px; min-width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--green); }
     .header-actions { display: flex; align-items: center; gap: 8px; }
@@ -435,7 +438,7 @@
         <button class="secondary-button print-button" type="button" id="printSchedule">พิมพ์ / บันทึกเป็น PDF</button>
       </aside>
     </div>
-    <footer>ตารางหน้าที่ • บันทึกในเครื่องเสมอ และซิงก์ขึ้นคลาวด์เมื่อเข้าร่วมตารางที่แชร์</footer>
+    <footer>ตารางหน้าที่ • บันทึกในเครื่องเสมอ และซิงก์ขึ้นคลาวด์เมื่อเข้าร่วมตารางที่แชร์<br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
   </main>
 
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
@@ -494,17 +497,23 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.1';
-      async function checkForUpdate() {
+      const APP_VERSION = '2026-11-06.2';
+      async function checkForUpdate(manual = false) {
+        const button = document.getElementById('versionButton');
         try {
+          if (manual && button) button.textContent = 'กำลังตรวจสอบ…';
           const response = await fetch(`./index.html?v=${Date.now()}`, { cache: 'no-store' });
           const match = (await response.text()).match(/const APP_VERSION = '([^']+)'/);
+          if (manual && button) {
+            button.textContent = match && match[1] !== APP_VERSION ? `มีเวอร์ชันใหม่ ${match[1]}` : `✓ ล่าสุดแล้ว · v${APP_VERSION}`;
+            setTimeout(() => { button.textContent = `v${APP_VERSION} · เช็กอัปเดต`; }, 3000);
+          }
           if (!match || match[1] === APP_VERSION || document.getElementById('updateBanner')) return;
           const banner = document.createElement('button'); banner.type = 'button'; banner.id = 'updateBanner';
           banner.className = 'update-banner'; banner.textContent = '✨ มีเวอร์ชันใหม่ แตะเพื่ออัปเดต';
           banner.addEventListener('click', () => location.replace(`./?v=${Date.now()}`));
           document.body.append(banner);
-        } catch (_) { /* Offline: try again next time. */ }
+        } catch (_) { if (manual && button) button.textContent = 'ออฟไลน์อยู่ ลองใหม่ภายหลัง'; }
       }
       // Built-in project settings so users don't have to paste them. The anon/publishable key is safe to expose.
       const DEFAULT_SUPABASE_URL = 'https://gksmldbkagkhljxkyseg.supabase.co';
@@ -1424,6 +1433,8 @@
       });
       updateStatusPill();
       checkForUpdate();
+      $('versionButton').textContent = `v${APP_VERSION} · เช็กอัปเดต`;
+      $('versionButton').addEventListener('click', () => checkForUpdate(true));
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
       try { const lastEmail = localStorage.getItem('nursing-duty-last-email'); if (lastEmail && !$('syncEmail').value) $('syncEmail').value = lastEmail; } catch (_) {}
       $('reminderOffset').addEventListener('change', onReminderSettingChange);
