@@ -398,6 +398,12 @@
     .version-button { color: var(--muted); border-color: var(--line); }
     footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
     .update-banner { background: var(--green); color: #fff; bottom: calc(84px + env(safe-area-inset-bottom)); }
+    /* Weather */
+    .weather-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-radius: 16px; background: #ffffff26; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+    .weather-icon { font-size: 30px; line-height: 1; }
+    .weather-body { display: grid; gap: 2px; min-width: 0; }
+    .weather-main { font-size: 15px; font-weight: 800; }
+    .weather-tip { color: #ffe1de; font-size: 13px; font-weight: 600; }
     /* Love note + countdown */
     .holiday-countdown { width: 100%; margin: 4px 0 0; color: #ffe1de; font-size: 13px; font-weight: 600; }
     .holiday-countdown[hidden], .love-note[hidden] { display: none; }
@@ -472,6 +478,13 @@
         <p id="todayHoliday" class="today-holiday" hidden></p>
         <p id="holidayCountdown" class="holiday-countdown" hidden></p>
       </div>
+      <button type="button" class="weather-card" id="weatherCard">
+        <span class="weather-icon" id="weatherIcon">🌤️</span>
+        <span class="weather-body">
+          <span class="weather-main" id="weatherMain">แตะเพื่อดูอากาศวันนี้</span>
+          <span class="weather-tip" id="weatherTip">ใช้ตำแหน่งของมือถือ (ขอครั้งเดียว)</span>
+        </span>
+      </button>
       <button type="button" class="love-note" id="loveNote" hidden>
         <span class="love-envelope" aria-hidden="true">💌</span>
         <span class="love-text" id="loveNoteText">วันนี้มีข้อความถึงคุณ · แตะเพื่อเปิดอ่าน</span>
@@ -708,7 +721,7 @@
       const STORAGE_KEY = 'nursing-duty-calendar-v1';
       const SYNC_CONFIG_KEY = 'nursing-duty-sync-config-v1';
       // Bump on every deploy so installed apps notice the new version.
-      const APP_VERSION = '2026-11-06.10';
+      const APP_VERSION = '2026-11-06.11';
       async function checkForUpdate(manual = false) {
         const button = document.getElementById('versionButton');
         try {
@@ -1282,6 +1295,64 @@
         box.textContent = days === 1 ? `🎉 พรุ่งนี้ได้หยุด! ${THAI_HOLIDAYS[next]}` : `🎉 อีก ${days} วันได้หยุด · ${THAI_HOLIDAYS[next]} (${when})`;
         box.hidden = false;
       }
+      // ---- Weather (Open-Meteo, free, no key) ----
+      const WEATHER_POS_KEY = 'nursing-duty-weather-pos-v1';
+      const WEATHER_CACHE_KEY = 'nursing-duty-weather-cache-v1';
+      const WMO = [
+        [[0], '☀️', 'ฟ้าใส'], [[1], '🌤️', 'แดดเป็นส่วนใหญ่'], [[2], '⛅', 'มีเมฆบางส่วน'], [[3], '☁️', 'เมฆมาก'],
+        [[45, 48], '🌫️', 'หมอก'], [[51, 53, 55, 56, 57], '🌦️', 'ฝนปรอยๆ'], [[61, 63, 66, 80, 81], '🌧️', 'ฝนตก'],
+        [[65, 67, 82], '🌧️', 'ฝนตกหนัก'], [[71, 73, 75, 77, 85, 86], '🌨️', 'หิมะ'], [[95, 96, 99], '⛈️', 'พายุฝนฟ้าคะนอง']
+      ];
+      function describeWeather(code) { const hit = WMO.find(([codes]) => codes.includes(code)); return hit ? { icon: hit[1], text: hit[2] } : { icon: '🌡️', text: 'อากาศวันนี้' }; }
+      function readJSON(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { return null; } }
+      function writeJSON(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
+      function renderWeather(w) {
+        const now = describeWeather(w.code);
+        $('weatherIcon').textContent = now.icon;
+        $('weatherMain').textContent = `${Math.round(w.temp)}° ${now.text} · สูง ${Math.round(w.max)}° ต่ำ ${Math.round(w.min)}°`;
+        const tips = [];
+        if (w.rain >= 50) tips.push(`☂️ โอกาสฝน ${w.rain}%${w.rainFrom ? ` ช่วง ${w.rainFrom}` : ''} พกร่มด้วยนะ`);
+        else if (w.rain >= 25) tips.push(`🌂 อาจมีฝน ${w.rain}% เผื่อร่มไว้ก็ดี`);
+        if (w.max >= 35) tips.push('🥵 ร้อนมาก ดื่มน้ำเยอะๆ นะ');
+        if (!tips.length) tips.push('😊 อากาศดี เดินทางสบาย');
+        $('weatherTip').textContent = tips.join(' · ');
+        $('weatherCard').classList.add('ready');
+      }
+      async function loadWeather(askLocation = false) {
+        let pos = readJSON(WEATHER_POS_KEY);
+        if (!pos) {
+          if (!askLocation || !navigator.geolocation) return;
+          $('weatherMain').textContent = 'กำลังหาตำแหน่ง…';
+          try {
+            pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+              p => resolve({ lat: +p.coords.latitude.toFixed(2), lon: +p.coords.longitude.toFixed(2) }), reject, { timeout: 15000, maximumAge: 86400000 }));
+            writeJSON(WEATHER_POS_KEY, pos);
+          } catch (_) {
+            $('weatherMain').textContent = 'ไม่ได้รับสิทธิ์ตำแหน่ง';
+            $('weatherTip').textContent = 'เปิดสิทธิ์ตำแหน่งให้แอปนี้ แล้วแตะอีกครั้ง';
+            return;
+          }
+        }
+        const cache = readJSON(WEATHER_CACHE_KEY);
+        if (cache && Date.now() - cache.at < 60 * 60 * 1000 && cache.day === dateKey(new Date())) { renderWeather(cache.w); return; }
+        if (cache?.w) renderWeather(cache.w);
+        try {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&timezone=auto&forecast_days=1`;
+          const json = await (await fetch(url)).json();
+          const hours = (json.hourly?.time || []).map((t, i) => ({ h: Number(t.slice(11, 13)), p: json.hourly.precipitation_probability[i] }));
+          const wet = hours.find(x => x.h >= new Date().getHours() && x.h <= 20 && x.p >= 50);
+          const w = {
+            temp: json.current.temperature_2m, code: json.current.weather_code,
+            max: json.daily.temperature_2m_max[0], min: json.daily.temperature_2m_min[0],
+            rain: json.daily.precipitation_probability_max[0] ?? 0,
+            rainFrom: wet ? `${String(wet.h).padStart(2, '0')}:00` : ''
+          };
+          writeJSON(WEATHER_CACHE_KEY, { at: Date.now(), day: dateKey(new Date()), w });
+          renderWeather(w);
+        } catch (_) {
+          if (!cache?.w) { $('weatherMain').textContent = 'โหลดอากาศไม่ได้'; $('weatherTip').textContent = 'เช็กอินเทอร์เน็ต แล้วแตะอีกครั้ง'; }
+        }
+      }
       // ---- Daily love notes ----
       // 90 messages in a fixed shuffled order: one per day, so a message comes back only after 90 days (~3 months).
       const DAILY_NOTES = ["ถ้ามีเรื่องให้หงุดหงิด นับหนึ่งถึงสิบแล้วนึกถึงชาบูไว้ 🍲", "กินวิตามินหรือยังวันนี้ ดูแลตัวเองด้วยนะ 🍊", "ไม่ว่าจะเหนื่อยแค่ไหน บ้านนี้มีอ้อมกอดรออยู่ 🏠", "ส่งพลังบวกไปให้หนึ่งกระบุง รับไปเลย ⚡", "เหนื่อยกายไม่เป็นไร ขอแค่ใจเธอสบายดีก็พอ 💞", "เธอคือฮีโร่ในชุดขาวของเรานะ 🦸‍♀️", "ขอบคุณที่เลือกทำงานที่ช่วยชีวิตคนนะ 🙇", "อย่าลืมยืดเส้นยืดสายบ้างนะ ยืนนานเมื่อยแย่ 🧘", "เสียงหัวเราะของเธอคือเพลงโปรดของเรา 🎶", "ขอให้ไม่มีเคสหนักๆ ให้ปวดหัววันนี้นะ 🍀", "ยิ้มให้ตัวเองในกระจกสักทีนะ คนในนั้นเก่งมาก 🪞", "อย่าแบกทุกอย่างไว้คนเดียว แบ่งมาให้เราบ้างได้นะ 🎒", "เธอไม่ได้อยู่คนเดียวนะ มีเราเป็นทีมเสมอ 🤝", "วันนี้มีอะไรไม่สบายใจ เล่าให้ฟังได้เสมอนะ 👂", "อยากให้รู้ว่าทุกความพยายามของเธอมีความหมาย 🌈", "ความเหนื่อยวันนี้ จะกลายเป็นความภูมิใจในวันหน้า 🏆", "ขอให้วันนี้เวลาเดินเร็วๆ ได้กลับบ้านไวๆ ⏰", "รักนะ วันนี้ก็ด้วย พรุ่งนี้ก็ด้วย ❤️", "ความใจเย็นของเธอช่วยคนไข้ได้มากเลยนะ 🕊️", "รักเธอที่สุดในโลก ทุกวันเลยนะ 🌏❤️", "ขอให้กาแฟแก้วนี้อร่อยเป็นพิเศษ ☕", "ทำงานเสร็จแล้วรีบกลับมาพักผ่อนนะ 🛏️", "ขอให้วันนี้ไม่มีโอที หรือถ้ามีก็ขอให้ได้เงินเยอะ 💸", "วันนี้อาจจะยาว แต่เธอผ่านมันไปได้แน่นอน 💪", "วันนี้ลองหาเรื่องเล็กๆ ที่ทำให้ยิ้มได้สักเรื่องนะ 🌼", "ไม่ว่าวันนี้จะเป็นยังไง เรายังอยู่ข้างเธอเสมอ 🫶", "วันนี้แต่งตัวสวยไหม ถึงไม่ได้ดูก็รู้ว่าสวย 💄", "อย่าลืมยิ้มนะ ยิ้มแล้วสวยขึ้นสามเท่า 😁", "คนที่ดูแลคนอื่นเก่ง ก็ควรได้รับการดูแลกลับเหมือนกัน 🫂", "ใครได้เจอเธอวันนี้ ถือว่าเจอนางฟ้า 👼", "วันนี้ให้คะแนนตัวเองเต็มร้อยไปเลย 💯", "อย่าลืมกินข้าวกลางวันนะ ห้ามข้าม 🍱", "เย็นนี้อยากดูหนังเรื่องไหน เลือกไว้เลยนะ 🎬", "ไม่ต้องเก่งทุกเรื่องก็ได้ แค่เป็นตัวเองก็ดีพอแล้ว 🌸", "ทุกคนที่เธอดูแลวันนี้ โชคดีมากที่ได้เจอเธอ 🩺", "วันนี้อย่าลืมกินขนมอร่อยๆ สักชิ้นนะ 🍰", "ถ้าเครียด ลองนึกถึงทริปที่เราอยากไปด้วยกันนะ ✈️", "เธอทำให้โลกนี้อบอุ่นขึ้นอีกนิดทุกวันเลย ☀️", "อย่าลืมทาครีมกันแดดนะ ถึงจะอยู่ในตึกก็เถอะ 🧴", "พักสายตาบ้างนะ จ้องจอจ้องชาร์ตนานๆ ล้า 👀", "เธอเป็นพยาบาลที่เก่ง และเป็นแฟนที่น่ารักที่สุด 💕", "วันนี้ทำงานให้สนุก แล้วกลับมาเล่าให้ฟังนะ 🗣️", "ขอให้วันนี้คนไข้น่ารัก งานไม่วุ่นนะ 🙏", "ขอบคุณที่อดทนกับทุกอย่างมาได้ไกลขนาดนี้ 🛤️", "แอบคิดถึงนะ ตั้งใจทำงานนะคนเก่ง 💭", "ถ้ารู้สึกท้อ ลองนึกถึงคนไข้ที่ยิ้มให้เธอเมื่อวาน 😌", "เลิกงานแล้วอยากกินอะไร บอกได้เลย เดี๋ยวพาไป 🍜", "แค่คิดถึงหน้าเธอก็มีแรงทำงานแล้ว 😚", "ขอบคุณที่เป็นคนที่ใส่ใจคนอื่นขนาดนี้ 🌷", "ถ้าวันนี้มีคนไม่น่ารักกับเธอ ไม่ต้องเก็บมาคิดนะ 🌧️➡️🌤️", "เธอเก่งกว่าที่ตัวเองคิดเยอะเลยนะ 💫", "ขอให้วันนี้ทุกอย่างราบรื่นเหมือนผ้าปูเตียงที่เพิ่งรีด 🛌", "เธอคือคนที่ทำให้วันธรรมดากลายเป็นวันพิเศษ 🎈", "แค่ตื่นมาทำงานได้ก็เก่งแล้ว ที่เหลือคือโบนัส ⭐", "อีกนิดเดียวก็ถึงวันหยุดแล้ว อดทนอีกหน่อยนะ 🏖️", "สู้ๆ นะ เย็นนี้มีรางวัลรออยู่ 🎁", "ทุกวันที่ผ่านไป เธอยิ่งเก่งขึ้นเรื่อยๆ 📈", "รอยยิ้มของเธอช่วยคนไข้ได้มากกว่าที่คิดนะ 😊", "ถ้าวันนี้เหนื่อย กลับมากอดกันนะ 🤗", "ขอให้วันนี้เพื่อนร่วมงานน่ารักกับเธอนะ 👭", "เราเชื่อในตัวเธอเสมอ ไม่ว่าจะเกิดอะไรขึ้น 🤞", "เก่งไม่ใช่แค่ทำงานได้ แต่คือยังใจดีได้ทุกวัน 💗", "เราโชคดีมากที่มีเธอเป็นแฟน 🥹", "วันนี้ขอให้หัวหน้าอารมณ์ดีนะ 555 😆", "เธอทำได้ดีเสมอ แม้ในวันที่รู้สึกว่าไม่ดี 🌙", "ใจดีกับคนอื่นแล้ว อย่าลืมใจดีกับตัวเองด้วยนะ 🤍", "อยากบอกว่าวันนี้ก็ยังรักเท่าเดิม หรืออาจมากกว่า 📏❤️", "จำไว้นะ เธอสำคัญกับเรามากที่สุด 🔑", "เธอเปลี่ยนโลกได้ทีละคน ทีละเตียง ทีละวัน 🌍", "ขอให้วันนี้มีแต่ข่าวดี และคนไข้อาการดีขึ้นนะ 📰", "ถ้าวันนี้มีอะไรผิดพลาด ไม่เป็นไรนะ ทุกคนเรียนรู้ได้ 📖", "ระหว่างพักเที่ยง ส่งรูปมาให้ดูหน่อยนะ คิดถึง 📸", "เธอเป็นแรงบันดาลใจให้เราอยากเป็นคนที่ดีขึ้น 🌱", "ทำดีที่สุดแล้วก็พอ ที่เหลือปล่อยไปนะ 🍃", "เก็บแรงไว้บ้างนะ เย็นนี้มีคนอยากชวนไปเดินเล่น 🚶", "ทุกครั้งที่เธอเหนื่อย อยากให้รู้ว่ามีคนภูมิใจอยู่ 🏅", "เธอคือเหตุผลที่ทำให้หลายคนหายป่วยไวขึ้น 💊", "หายใจลึกๆ หนึ่งที แล้วค่อยๆ ทำไปทีละอย่างนะ 🌬️", "เหนื่อยก็พักได้นะ พักแล้วค่อยไปต่อ 🌿", "ดื่มน้ำเยอะๆ นะ ร่างกายจะได้มีแรงดูแลคนอื่นต่อ 💧", "อย่าลืมเข้าห้องน้ำนะ อย่ากลั้นนาน 555 🚻", "วันนี้ลองชมตัวเองสักเรื่องนะ เธอสมควรได้ 👏", "ไม่ต้องรีบนะ ค่อยๆ ทำ ช้าแต่ชัวร์ 🐢", "เธอคือส่วนที่ดีที่สุดของทุกวันของเรา 🌅", "วันนี้ก็เก่งมากแล้วนะ ไม่ต้องสมบูรณ์แบบก็ได้ 💛", "ความอดทนของเธอคือสิ่งที่น่าชื่นชมที่สุดเลย 🌻", "งานหนักแค่ไหน เธอก็ยังน่ารักเหมือนเดิม 🥰", "วันนี้ขอให้เจอแต่เรื่องดีๆ นะ ✨", "ภูมิใจในตัวเธอมากๆ เลย รู้ไหม ❤️", "ทุกคนที่ได้รับการดูแลจากเธอ คงรู้สึกอุ่นใจมาก 🧣"];
@@ -1691,6 +1762,9 @@
       $('printSchedule').addEventListener('click', () => window.print());
       $('shareImage').addEventListener('click', shareScheduleImage);
       $('loveNote').addEventListener('click', openLoveNote);
+      $('weatherCard').addEventListener('click', () => { writeJSON(WEATHER_CACHE_KEY, null); loadWeather(true); });
+      loadWeather(false);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadWeather(false); });
       // Secret entrance: tap the footer heart 5 times quickly.
       let heartTaps = 0, heartTimer = null;
       $('secretHeart').addEventListener('click', () => {
