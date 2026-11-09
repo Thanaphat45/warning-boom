@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.4">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.5">
 </head>
 <body>
   <main class="shell">
@@ -281,11 +281,20 @@
   <div class="overlay" id="bulkOverlay" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
     <div class="dialog">
       <div class="dialog-head">
-        <div><h2 id="bulkTitle">เพิ่มหลายรายการ</h2><p>บรรทัดละ 1 รายการ: ชื่อ ตามด้วยวันหมดอายุ (ใส่ที่เก็บหลัง @ ได้)</p></div>
+        <div><h2 id="bulkTitle">เพิ่มหลายรายการ</h2><p id="bulkHint">กรอกชื่อ แล้วเลือกวันหมดอายุ · เลือกวันแล้วจะมีแถวใหม่ให้เอง</p></div>
         <button class="close-button" type="button" id="closeBulk" aria-label="ปิด">×</button>
       </div>
+      <div id="bulkRowsMode">
+        <div class="bulk-head"><span>ชื่อเวชภัณฑ์</span><span>วันหมดอายุ</span><span></span></div>
+        <div class="bulk-rows" id="bulkRows"></div>
+        <input id="bulkLocation" class="bulk-location" maxlength="40" placeholder="ที่เก็บ (ถ้ามี) ใช้กับทุกรายการ เช่น ห้องยา" list="supplyLocationList">
+        <button type="button" class="bulk-link" id="bulkToPaste">📋 มีรายการเป็นข้อความอยู่แล้ว? วางทีเดียว</button>
+      </div>
+      <div id="bulkPasteMode" hidden>
       <textarea id="bulkText" class="bulk-text" rows="7" placeholder="Paracetamol 500 mg 14/11/69&#10;Adrenaline 1 mg 03/2027 @ รถฉุกเฉิน&#10;น้ำเกลือ NSS 1000 ml 28 พ.ค. 70&#10;Betadine EXP NOV 2027"></textarea>
       <div class="bulk-preview" id="bulkPreview"></div>
+        <button type="button" class="bulk-link" id="bulkToRows">↩ กลับไปกรอกทีละแถว</button>
+      </div>
       <div class="dialog-actions">
         <span class="bulk-count" id="bulkCount"></span>
         <div class="action-right">
@@ -358,7 +367,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.4';</script>
-  <script src="app.js?v=2026-11-09.4"></script>
+  <script>const APP_VERSION = '2026-11-09.5';</script>
+  <script src="app.js?v=2026-11-09.5"></script>
 </body>
 </html>

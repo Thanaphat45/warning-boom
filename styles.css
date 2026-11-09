@@ -520,3 +520,12 @@ footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
 .bulk-row.bad span { color: #c81d25; }
 .bulk-count { color: var(--muted); font-size: 13px; }
 #saveBulk:disabled { opacity: .45; box-shadow: none; }
+
+#bulkRowsMode[hidden], #bulkPasteMode[hidden] { display: none; }
+.bulk-head, .bulk-row-edit { display: grid; grid-template-columns: minmax(0, 1fr) 150px 30px; gap: 6px; align-items: center; }
+.bulk-head { margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.bulk-rows { display: grid; gap: 6px; max-height: 42vh; overflow-y: auto; }
+.bulk-row-edit input { min-width: 0; min-height: 42px; padding: 0 10px; border-radius: 10px; font: inherit; font-size: 15px; }
+.bulk-row-edit .bulk-remove { height: 30px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.bulk-location { width: 100%; min-height: 42px; margin-top: 10px; padding: 0 10px; border-radius: 10px; font: inherit; }
+@media (max-width: 380px) { .bulk-head, .bulk-row-edit { grid-template-columns: minmax(0, 1fr) 128px 26px; } }

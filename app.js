@@ -1242,7 +1242,44 @@
     }
     return { line, error: 'ไม่พบวันหมดอายุ' };
   }
-  let bulkParsed = [];
+  let bulkParsed = []; let bulkMode = 'rows';
+  // ---- Row mode (default): name + date picker per row ----
+  function addBulkRow(focus = false) {
+    const row = document.createElement('div'); row.className = 'bulk-row-edit';
+    const name = document.createElement('input'); name.placeholder = 'เช่น Paracetamol 500 mg'; name.maxLength = 60; name.setAttribute('list', 'supplyNameList');
+    const date = document.createElement('input'); date.type = 'date';
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'bulk-remove'; remove.textContent = '×'; remove.setAttribute('aria-label', 'ลบแถว');
+    remove.addEventListener('click', () => { row.remove(); if (!$('bulkRows').children.length) addBulkRow(); updateBulkCount(); });
+    name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); date.focus(); try { date.showPicker(); } catch (_) {} } });
+    const touched = () => {
+      updateBulkCount();
+      const rows = [...$('bulkRows').children]; const last = rows[rows.length - 1];
+      if (row === last && name.value.trim() && date.value) addBulkRow();
+    };
+    name.addEventListener('input', touched); date.addEventListener('change', touched); date.addEventListener('input', touched);
+    row.append(name, date, remove); $('bulkRows').append(row);
+    if (focus) setTimeout(() => name.focus(), 30);
+    return row;
+  }
+  function rowEntries() {
+    const location = $('bulkLocation').value.trim();
+    return [...$('bulkRows').children].map(row => { const [name, date] = row.querySelectorAll('input'); return { name: name.value.trim(), expiry: date.value, location }; })
+      .filter(r => r.name && /^\d{4}-\d{2}-\d{2}$/.test(r.expiry));
+  }
+  function updateBulkCount() {
+    if (bulkMode !== 'rows') return renderBulkPreview();
+    const ready = rowEntries().length;
+    const missing = [...$('bulkRows').children].filter(row => { const [n, d] = row.querySelectorAll('input'); return Boolean(n.value.trim()) !== Boolean(d.value); }).length;
+    $('bulkCount').textContent = missing ? `ยังกรอกไม่ครบ ${missing} แถว` : '';
+    $('saveBulk').disabled = !ready;
+    $('saveBulk').textContent = ready ? `บันทึก ${ready} รายการ` : 'บันทึก';
+  }
+  function setBulkMode(mode) {
+    bulkMode = mode;
+    $('bulkRowsMode').hidden = mode !== 'rows'; $('bulkPasteMode').hidden = mode !== 'paste';
+    $('bulkHint').textContent = mode === 'rows' ? 'กรอกชื่อ แล้วเลือกวันหมดอายุ · เลือกวันแล้วจะมีแถวใหม่ให้เอง' : 'บรรทัดละ 1 รายการ: ชื่อ ตามด้วยวันหมดอายุ (ใส่ที่เก็บหลัง @ ได้)';
+    if (mode === 'paste') { renderBulkPreview(); setTimeout(() => $('bulkText').focus(), 30); } else updateBulkCount();
+  }
   function renderBulkPreview() {
     bulkParsed = $('bulkText').value.split('\n').map(parseSupplyLine).filter(Boolean);
     const ok = bulkParsed.filter(r => !r.error); const bad = bulkParsed.length - ok.length;
@@ -1260,13 +1297,20 @@
     $('saveBulk').textContent = ok.length ? `เพิ่ม ${ok.length} รายการ` : 'เพิ่มรายการ';
   }
   function closeBulk() { $('bulkOverlay').classList.remove('open'); }
-  $('bulkSupply').addEventListener('click', () => { $('bulkText').value = ''; renderBulkPreview(); $('bulkOverlay').classList.add('open'); setTimeout(() => $('bulkText').focus(), 30); });
+  $('bulkSupply').addEventListener('click', () => {
+    $('bulkText').value = ''; $('bulkLocation').value = ''; $('bulkRows').replaceChildren();
+    fillDatalist('supplyNameList', supplies().map(s => s.name)); fillDatalist('supplyLocationList', supplies().map(s => s.location));
+    addBulkRow(true); addBulkRow(); addBulkRow();
+    setBulkMode('rows'); $('bulkOverlay').classList.add('open');
+  });
+  $('bulkToPaste').addEventListener('click', () => setBulkMode('paste'));
+  $('bulkToRows').addEventListener('click', () => setBulkMode('rows'));
   $('bulkText').addEventListener('input', renderBulkPreview);
   $('closeBulk').addEventListener('click', closeBulk);
   $('cancelBulk').addEventListener('click', closeBulk);
   $('bulkOverlay').addEventListener('click', event => { if (event.target === $('bulkOverlay')) closeBulk(); });
   $('saveBulk').addEventListener('click', () => {
-    const ok = bulkParsed.filter(r => !r.error); if (!ok.length) return;
+    const ok = bulkMode === 'rows' ? rowEntries() : bulkParsed.filter(r => !r.error); if (!ok.length) return;
     const list = supplies();
     ok.forEach(r => list.push({ id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, name: r.name, expiry: r.expiry, location: r.location, lot: '' }));
     save(); closeBulk(); setSupplyFilter('all');
