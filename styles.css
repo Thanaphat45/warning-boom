@@ -491,3 +491,19 @@ footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
 .supply-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .supply-alert { width: 100%; padding: 8px 12px; border: 0; border-radius: 12px; background: #fff; color: #b5121b; font: inherit; font-size: 13px; font-weight: 800; text-align: left; cursor: pointer; }
 .supply-alert[hidden] { display: none; }
+
+.supply-export { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.supply-print { display: none; }
+@media print {
+  body.print-supplies .shell, body.print-supplies .bottom-nav, body.print-supplies .overlay, body.print-supplies .update-banner { display: none !important; }
+  body.print-supplies { background: #fff !important; }
+  body.print-supplies .supply-print { display: block; padding: 0 4mm; color: #000; font-size: 11pt; }
+  .supply-print h1 { margin: 0 0 2mm; font-size: 16pt; }
+  .supply-print p { margin: 0 0 4mm; color: #444; }
+  .supply-print table { width: 100%; border-collapse: collapse; }
+  .supply-print th, .supply-print td { padding: 2mm 2.5mm; border: 0.3mm solid #999; text-align: left; vertical-align: top; }
+  .supply-print th { background: #eee; }
+  .supply-print tr.expired td { background: #ffe5e5; font-weight: 700; }
+  .supply-print tr.soon td { background: #fff1dd; }
+  .supply-print td.check { width: 14mm; }
+}

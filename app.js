@@ -1153,7 +1153,7 @@
       const row = document.createElement('button'); row.type = 'button'; row.className = `supply-item ${supplyState(item.days)}`;
       const name = document.createElement('span'); name.className = 's-name'; name.textContent = item.name;
       const meta = document.createElement('span'); meta.className = 's-meta';
-      meta.textContent = [`EXP ${fmt.format(new Date(y, m - 1, d))}`, item.qty !== '' && item.qty != null ? `${item.qty} ${item.unit || ''}`.trim() : '', item.location, item.lot].filter(Boolean).join(' · ');
+      meta.textContent = [`EXP ${fmt.format(new Date(y, m - 1, d))}`, item.location, item.lot].filter(Boolean).join(' · ');
       const left = document.createElement('span'); left.className = 's-left'; left.textContent = leftLabel(item.days);
       row.append(name, left, meta);
       row.addEventListener('click', () => openSupplyDialog(item.id));
@@ -1172,7 +1172,6 @@
     editingSupplyId = id; const item = supplies().find(s => s.id === id);
     $('supplyDialogTitle').textContent = item ? 'แก้ไขเวชภัณฑ์' : 'เพิ่มเวชภัณฑ์';
     $('supplyName').value = item?.name || ''; $('supplyExpiry').value = item?.expiry || '';
-    $('supplyQty').value = item?.qty ?? ''; $('supplyUnit').value = item?.unit || '';
     $('supplyLocation').value = item?.location || ''; $('supplyLot').value = item?.lot || '';
     $('deleteSupply').hidden = !item;
     fillDatalist('supplyNameList', supplies().map(s => s.name));
@@ -1185,9 +1184,7 @@
     event.preventDefault();
     const name = $('supplyName').value.trim(); const expiry = $('supplyExpiry').value;
     if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(expiry)) return;
-    const qtyRaw = $('supplyQty').value.trim();
     const record = { id: editingSupplyId || `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, expiry,
-      qty: qtyRaw === '' ? '' : Math.max(0, Math.round(Number(qtyRaw))), unit: $('supplyUnit').value.trim(),
       location: $('supplyLocation').value.trim(), lot: $('supplyLot').value.trim() };
     const list = supplies(); const at = list.findIndex(s => s.id === record.id);
     if (at >= 0) list[at] = record; else list.push(record);
@@ -1199,6 +1196,38 @@
     data.supplies = supplies().filter(s => s.id !== editingSupplyId); save(); closeSupplyDialog(); renderSupplies();
   });
   $('addSupply').addEventListener('click', () => openSupplyDialog());
+  function sortedSupplies() { return supplies().map(item => ({ ...item, days: daysUntil(item.expiry) })).sort((a, b) => a.days - b.days); }
+  const thaiFullDate = key => { const [y, m, d] = key.split('-').map(Number); return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d)); };
+  const statusText = days => days < 0 ? 'หมดอายุแล้ว' : days <= 30 ? 'ใกล้หมด' : days <= 90 ? 'เฝ้าระวัง' : 'ปกติ';
+  $('printSupplies').addEventListener('click', () => {
+    const rows = sortedSupplies();
+    if (!rows.length) { alert('ยังไม่มีรายการเวชภัณฑ์'); return; }
+    $('supplyPrintDate').textContent = `พิมพ์เมื่อ ${thaiFullDate(dateKey(new Date()))} · ทั้งหมด ${rows.length} รายการ · หมดอายุแล้ว ${rows.filter(r => r.days < 0).length} · ใกล้หมด (≤30 วัน) ${rows.filter(r => r.days >= 0 && r.days <= 30).length}`;
+    $('supplyPrintBody').replaceChildren(...rows.map((item, index) => {
+      const tr = document.createElement('tr'); tr.className = item.days < 0 ? 'expired' : item.days <= 30 ? 'soon' : '';
+      [String(index + 1), item.name, thaiFullDate(item.expiry), leftLabel(item.days), item.location || '', item.lot || '', ''].forEach((text, col) => {
+        const td = document.createElement('td'); td.textContent = text; if (col === 6) td.className = 'check'; tr.append(td);
+      });
+      return tr;
+    }));
+    document.body.classList.add('print-supplies');
+    const done = () => { document.body.classList.remove('print-supplies'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+    setTimeout(done, 1500);
+  });
+  $('exportSupplies').addEventListener('click', () => {
+    const rows = sortedSupplies();
+    if (!rows.length) { alert('ยังไม่มีรายการเวชภัณฑ์'); return; }
+    const esc = v => { const t = String(v ?? ''); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const lines = [['ลำดับ', 'ชื่อเวชภัณฑ์', 'วันหมดอายุ', 'เหลือ (วัน)', 'สถานะ', 'ที่เก็บ', 'Lot / หมายเหตุ']]
+      .concat(rows.map((item, index) => [index + 1, item.name, thaiFullDate(item.expiry), item.days, statusText(item.days), item.location || '', item.lot || '']));
+    // BOM so Excel opens Thai text correctly.
+    const blob = new Blob(['\ufeff' + lines.map(row => row.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const link = document.createElement('a');
+    link.href = url; link.download = `เวชภัณฑ์-${dateKey(new Date())}.csv`; document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
   $('closeSupply').addEventListener('click', closeSupplyDialog);
   $('cancelSupply').addEventListener('click', closeSupplyDialog);
   $('supplyOverlay').addEventListener('click', event => { if (event.target === $('supplyOverlay')) closeSupplyDialog(); });

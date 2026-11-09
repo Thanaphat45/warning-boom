@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.1">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.2">
 </head>
 <body>
   <main class="shell">
@@ -155,6 +155,10 @@
           <button type="button" class="supply-filter" data-filter="expired">หมดอายุแล้ว</button>
         </div>
         <div class="supply-list" id="supplyList"></div>
+        <div class="supply-export">
+          <button class="secondary-button" type="button" id="printSupplies">🖨️ พิมพ์ / PDF</button>
+          <button class="secondary-button" type="button" id="exportSupplies">📊 ดาวน์โหลด Excel</button>
+        </div>
       </section>
     </div>
 
@@ -262,10 +266,6 @@
       </div>
       <div class="field"><label for="supplyName">ชื่อเวชภัณฑ์</label><input id="supplyName" maxlength="60" required placeholder="เช่น Paracetamol 500 mg" list="supplyNameList"><datalist id="supplyNameList"></datalist></div>
       <div class="field"><label for="supplyExpiry">วันหมดอายุ</label><input id="supplyExpiry" type="date" required></div>
-      <div class="supply-two">
-        <div class="field"><label for="supplyQty">จำนวน</label><input id="supplyQty" type="number" min="0" step="1" inputmode="numeric" placeholder="เช่น 20"></div>
-        <div class="field"><label for="supplyUnit">หน่วย</label><input id="supplyUnit" maxlength="12" placeholder="เม็ด / ขวด / กล่อง" list="supplyUnitList"><datalist id="supplyUnitList"><option value="เม็ด"><option value="แผง"><option value="ขวด"><option value="กล่อง"><option value="หลอด"><option value="ชิ้น"><option value="ซอง"><option value="แอมป์"><option value="ไวแอล"></datalist></div>
-      </div>
       <div class="field"><label for="supplyLocation">ที่เก็บ (ถ้ามี)</label><input id="supplyLocation" maxlength="40" placeholder="เช่น ห้องยา ชั้น 2 / รถฉุกเฉิน" list="supplyLocationList"><datalist id="supplyLocationList"></datalist></div>
       <div class="field"><label for="supplyLot">Lot / หมายเหตุ (ถ้ามี)</label><input id="supplyLot" maxlength="60" placeholder="เช่น LOT A1234"></div>
       <div class="dialog-actions">
@@ -277,6 +277,11 @@
       </div>
     </form>
   </div>
+  <section class="supply-print" id="supplyPrint" aria-hidden="true">
+    <h1>รายการเวชภัณฑ์และวันหมดอายุ</h1>
+    <p id="supplyPrintDate"></p>
+    <table><thead><tr><th>#</th><th>ชื่อเวชภัณฑ์</th><th>วันหมดอายุ</th><th>เหลือ</th><th>ที่เก็บ</th><th>Lot / หมายเหตุ</th><th>ตรวจแล้ว</th></tr></thead><tbody id="supplyPrintBody"></tbody></table>
+  </section>
   <nav class="bottom-nav" aria-label="เมนูหลัก">
     <button type="button" class="nav-item active" data-tab="calendar"><span class="nav-icon">📅</span><span>ปฏิทิน</span></button>
     <button type="button" class="nav-item" data-tab="duties"><span class="nav-icon">📌</span><span>หน้าที่</span></button>
@@ -335,7 +340,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.1';</script>
-  <script src="app.js?v=2026-11-09.1"></script>
+  <script>const APP_VERSION = '2026-11-09.2';</script>
+  <script src="app.js?v=2026-11-09.2"></script>
 </body>
 </html>
