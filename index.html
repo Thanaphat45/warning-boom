@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.6">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.7">
 </head>
 <body>
   <main class="shell">
@@ -155,7 +155,12 @@
           <button type="button" class="supply-filter" data-filter="soon">ใกล้หมด</button>
           <button type="button" class="supply-filter" data-filter="expired">หมดอายุแล้ว</button>
         </div>
+        <div class="place-chips" id="placeChips" aria-label="กรองตามที่เก็บ"></div>
         <div class="supply-list" id="supplyList"></div>
+        <details class="discard-history" id="discardHistory" hidden>
+          <summary>🗑️ ประวัติการทิ้ง <span id="discardCount"></span></summary>
+          <div class="discard-list" id="discardList"></div>
+        </details>
         <div class="supply-export">
           <button class="secondary-button" type="button" id="printSupplies">🖨️ พิมพ์ / PDF</button>
           <button class="secondary-button" type="button" id="exportSupplies">📊 ดาวน์โหลด Excel</button>
@@ -271,6 +276,7 @@
       <div class="field"><label for="supplyLot">Lot / หมายเหตุ (ถ้ามี)</label><input id="supplyLot" maxlength="60" placeholder="เช่น LOT A1234"></div>
       <div class="dialog-actions">
         <button class="delete-button" type="button" id="deleteSupply" hidden>ลบรายการนี้</button>
+        <button class="secondary-button" type="button" id="newLotSupply" hidden>🔄 ได้ล็อตใหม่มาแทน</button>
         <div class="action-right">
           <button class="secondary-button" type="button" id="cancelSupply">ยกเลิก</button>
           <button class="primary-button" type="submit">บันทึก</button>
@@ -366,7 +372,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.6';</script>
-  <script src="app.js?v=2026-11-09.6"></script>
+  <script>const APP_VERSION = '2026-11-09.7';</script>
+  <script src="app.js?v=2026-11-09.7"></script>
 </body>
 </html>

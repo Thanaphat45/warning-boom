@@ -62,6 +62,7 @@
         stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
         stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
         stored.notes = stored.notes && typeof stored.notes === 'object' && !Array.isArray(stored.notes) ? stored.notes : {};
+        stored.discarded = Array.isArray(stored.discarded) ? stored.discarded : [];
         stored.supplies = Array.isArray(stored.supplies) ? stored.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : [];
         for (const entries of Object.values(stored.entries)) {
           if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
@@ -69,7 +70,7 @@
         return stored;
       }
     } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
-    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {}, supplies: [] };
+    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {}, supplies: [], discarded: [] };
   }
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -106,7 +107,8 @@
       templates: value.templates && typeof value.templates === 'object' ? value.templates : {},
       members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : [],
       notes: value.notes && typeof value.notes === 'object' && !Array.isArray(value.notes) ? value.notes : {},
-      supplies: Array.isArray(value.supplies) ? value.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : []
+      supplies: Array.isArray(value.supplies) ? value.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : [],
+      discarded: Array.isArray(value.discarded) ? value.discarded.filter(s => s && typeof s.name === 'string') : []
     };
     for (const entries of Object.values(normalized.entries)) {
       if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
@@ -1109,7 +1111,9 @@
   $('shareImage').addEventListener('click', shareScheduleImage);
   $('loveNote').addEventListener('click', openLoveNote);
   // ---------------- Supplies (เวชภัณฑ์) with expiry dates ----------------
-  let supplyFilter = 'all'; let editingSupplyId = null;
+  let supplyFilter = 'all'; let editingSupplyId = null; let placeFilter = '__all';
+  const NO_PLACE = 'ไม่ระบุที่เก็บ';
+  const placeOf = item => (item.location || '').trim() || NO_PLACE;
   function supplies() { if (!Array.isArray(data.supplies)) data.supplies = []; return data.supplies; }
   function daysUntil(key) {
     const [y, m, d] = key.split('-').map(Number); const t = new Date();
@@ -1139,8 +1143,22 @@
     alert.hidden = !urgent;
     alert.textContent = urgent ? `💊 เวชภัณฑ์${count.expired ? ` หมดอายุแล้ว ${count.expired}` : ''}${count.expired && count.soon ? ' ·' : ''}${count.soon ? ` ใกล้หมด ${count.soon}` : ''} รายการ · แตะเพื่อดู` : '';
     const q = ($('supplySearch').value || '').trim().toLowerCase();
+    // ---- place chips (only when at least one item has a place) ----
+    const places = [...new Set(all.map(placeOf))].sort((a, b) => (a === NO_PLACE) - (b === NO_PLACE) || a.localeCompare(b, 'th'));
+    if (placeFilter !== '__all' && !places.includes(placeFilter)) placeFilter = '__all';
+    const chips = $('placeChips'); chips.replaceChildren();
+    if (places.length > 1 || (places.length === 1 && places[0] !== NO_PLACE)) {
+      [['__all', '📍 ทุกที่'], ...places.map(p => [p, p])].forEach(([value, label]) => {
+        const chip = document.createElement('button'); chip.type = 'button'; chip.className = `place-chip${placeFilter === value ? ' active' : ''}`;
+        chip.textContent = value === '__all' ? label : `${label} (${all.filter(i => placeOf(i) === value).length})`;
+        chip.addEventListener('click', () => { placeFilter = value; renderSupplies(); });
+        chips.append(chip);
+      });
+    }
     const shown = all.filter(i => (supplyFilter === 'all' || (supplyFilter === 'expired' ? i.days < 0 : i.days >= 0 && i.days <= 30)) &&
+      (placeFilter === '__all' || placeOf(i) === placeFilter) &&
       (!q || `${i.name} ${i.location || ''} ${i.lot || ''}`.toLowerCase().includes(q)));
+    renderDiscardHistory();
     list.replaceChildren();
     if (!shown.length) {
       const empty = document.createElement('div'); empty.className = 'supply-empty';
@@ -1154,18 +1172,63 @@
     all.forEach(i => { const k = nameKey(i.name); groups.set(k, (groups.get(k) || []).concat(i)); });
     const useFirst = new Set();
     groups.forEach(list => { if (list.length < 2) return; const first = list.filter(i => i.days >= 0).sort((a, b) => a.days - b.days)[0]; if (first) useFirst.add(first.id); });
-    shown.forEach(item => {
+    // Group by place when showing every place and more than one place exists.
+    const grouped = placeFilter === '__all' && places.length > 1;
+    const ordered = grouped ? places.flatMap(p => shown.filter(i => placeOf(i) === p)) : shown;
+    let lastPlace = null;
+    ordered.forEach(item => {
+      if (grouped && placeOf(item) !== lastPlace) {
+        lastPlace = placeOf(item);
+        const inPlace = shown.filter(i => placeOf(i) === lastPlace);
+        const head = document.createElement('div'); head.className = 'place-heading';
+        head.innerHTML = '<b></b><span></span>'; head.firstChild.textContent = `📍 ${lastPlace}`;
+        const bad = inPlace.filter(i => i.days <= 30).length;
+        head.lastChild.textContent = `${inPlace.length} รายการ${bad ? ` · ต้องดู ${bad}` : ''}`;
+        list.append(head);
+      }
       const [y, m, d] = item.expiry.split('-').map(Number);
-      const row = document.createElement('button'); row.type = 'button'; row.className = `supply-item ${supplyState(item.days)}`;
+      const row = document.createElement('div'); row.setAttribute('role', 'button'); row.tabIndex = 0; row.className = `supply-item ${supplyState(item.days)}`;
+      row.addEventListener('keydown', e => { if (e.key === 'Enter') openSupplyDialog(item.id); });
       const name = document.createElement('span'); name.className = 's-name'; name.textContent = item.name;
       if (useFirst.has(item.id)) { const tag = document.createElement('span'); tag.className = 'use-first'; tag.textContent = '⭐ ใช้ก่อน'; name.append(' ', tag); }
       const meta = document.createElement('span'); meta.className = 's-meta';
       meta.textContent = [`EXP ${fmt.format(new Date(y, m - 1, d))}`, item.location, item.lot].filter(Boolean).join(' · ');
       const left = document.createElement('span'); left.className = 's-left'; left.textContent = leftLabel(item.days);
       row.append(name, left, meta);
+      if (item.days < 0) {
+        const discard = document.createElement('button'); discard.type = 'button'; discard.className = 'discard-button'; discard.textContent = '🗑️ ทิ้งแล้ว';
+        discard.addEventListener('click', e => { e.stopPropagation(); discardSupply(item.id); });
+        row.append(discard);
+      }
       row.addEventListener('click', () => openSupplyDialog(item.id));
       list.append(row);
     });
+  }
+  function discardSupply(id) {
+    const item = supplies().find(s => s.id === id); if (!item) return;
+    if (!confirm(`ทิ้ง "${item.name}" (EXP ${thaiShort(item.expiry)}) แล้วใช่ไหม?\nรายการจะย้ายไปเก็บในประวัติการทิ้ง`)) return;
+    data.supplies = supplies().filter(s => s.id !== id);
+    if (!Array.isArray(data.discarded)) data.discarded = [];
+    data.discarded.unshift({ name: item.name, expiry: item.expiry, location: item.location || '', lot: item.lot || '', discardedAt: dateKey(new Date()) });
+    data.discarded = data.discarded.slice(0, 300);
+    save(); renderSupplies();
+  }
+  function thaiShort(key) { const [y, m, d] = key.split('-').map(Number); return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }).format(new Date(y, m - 1, d)); }
+  function renderDiscardHistory() {
+    const items = Array.isArray(data.discarded) ? data.discarded : [];
+    $('discardHistory').hidden = !items.length; $('discardCount').textContent = items.length ? `(${items.length})` : '';
+    $('discardList').replaceChildren(...items.slice(0, 50).map((item, index) => {
+      const row = document.createElement('div'); row.className = 'discard-row';
+      const what = document.createElement('b'); what.textContent = `${item.name}${item.location ? ` · ${item.location}` : ''}`;
+      const when = document.createElement('span'); when.textContent = `EXP ${thaiShort(item.expiry)} · ทิ้ง ${thaiShort(item.discardedAt)}`;
+      const undo = document.createElement('button'); undo.type = 'button'; undo.textContent = 'คืน';
+      undo.addEventListener('click', () => {
+        data.discarded.splice(index, 1);
+        supplies().push({ id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: item.name, expiry: item.expiry, location: item.location, lot: item.lot });
+        save(); renderSupplies();
+      });
+      row.append(what, when, undo); return row;
+    }));
   }
   function setSupplyFilter(filter) {
     supplyFilter = filter;
@@ -1180,7 +1243,7 @@
     $('supplyDialogTitle').textContent = item ? 'แก้ไขเวชภัณฑ์' : 'เพิ่มเวชภัณฑ์';
     $('supplyName').value = item?.name || ''; $('supplyExpiry').value = item?.expiry || '';
     $('supplyLocation').value = item?.location || ''; $('supplyLot').value = item?.lot || '';
-    $('deleteSupply').hidden = !item;
+    $('deleteSupply').hidden = !item; $('newLotSupply').hidden = !item;
     fillDatalist('supplyNameList', supplies().map(s => s.name));
     fillDatalist('supplyLocationList', supplies().map(s => s.location));
     $('supplyOverlay').classList.add('open');
@@ -1203,6 +1266,13 @@
     data.supplies = supplies().filter(s => s.id !== editingSupplyId); save(); closeSupplyDialog(); renderSupplies();
   });
   $('addSupply').addEventListener('click', () => openSupplyDialog());
+  // New lot arrived: keep name and place, clear the date and lot, and save over the old entry.
+  $('newLotSupply').addEventListener('click', () => {
+    $('supplyDialogTitle').textContent = `ล็อตใหม่: ${$('supplyName').value}`;
+    $('supplyExpiry').value = ''; $('supplyLot').value = '';
+    $('newLotSupply').hidden = true;
+    setTimeout(() => { $('supplyExpiry').focus(); try { $('supplyExpiry').showPicker(); } catch (_) {} }, 30);
+  });
   // ---- Bulk add: one supply per line, "name date [@ location]" ----
   const MONTHS = { 'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6, 'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
     'มกราคม': 1, 'กุมภาพันธ์': 2, 'มีนาคม': 3, 'เมษายน': 4, 'พฤษภาคม': 5, 'มิถุนายน': 6, 'กรกฎาคม': 7, 'สิงหาคม': 8, 'กันยายน': 9, 'ตุลาคม': 10, 'พฤศจิกายน': 11, 'ธันวาคม': 12,
@@ -1324,13 +1394,16 @@
     save(); closeBulk(); setSupplyFilter('all');
   });
 
-  function sortedSupplies() { return supplies().map(item => ({ ...item, days: daysUntil(item.expiry) })).sort((a, b) => a.days - b.days); }
+  function sortedSupplies() {
+    return supplies().filter(item => placeFilter === '__all' || placeOf(item) === placeFilter)
+      .map(item => ({ ...item, days: daysUntil(item.expiry) })).sort((a, b) => a.days - b.days);
+  }
   const thaiFullDate = key => { const [y, m, d] = key.split('-').map(Number); return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d)); };
   const statusText = days => days < 0 ? 'หมดอายุแล้ว' : days <= 30 ? 'ใกล้หมด' : days <= 90 ? 'เฝ้าระวัง' : 'ปกติ';
   $('printSupplies').addEventListener('click', () => {
     const rows = sortedSupplies();
     if (!rows.length) { alert('ยังไม่มีรายการเวชภัณฑ์'); return; }
-    $('supplyPrintDate').textContent = `พิมพ์เมื่อ ${thaiFullDate(dateKey(new Date()))} · ทั้งหมด ${rows.length} รายการ · หมดอายุแล้ว ${rows.filter(r => r.days < 0).length} · ใกล้หมด (≤30 วัน) ${rows.filter(r => r.days >= 0 && r.days <= 30).length}`;
+    $('supplyPrintDate').textContent = `${placeFilter === '__all' ? '' : `📍 ${placeFilter} · `}พิมพ์เมื่อ ${thaiFullDate(dateKey(new Date()))} · ทั้งหมด ${rows.length} รายการ · หมดอายุแล้ว ${rows.filter(r => r.days < 0).length} · ใกล้หมด (≤30 วัน) ${rows.filter(r => r.days >= 0 && r.days <= 30).length}`;
     $('supplyPrintBody').replaceChildren(...rows.map((item, index) => {
       const tr = document.createElement('tr'); tr.className = item.days < 0 ? 'expired' : item.days <= 30 ? 'soon' : '';
       [String(index + 1), item.name, thaiFullDate(item.expiry), leftLabel(item.days), item.location || '', item.lot || '', ''].forEach((text, col) => {
@@ -1353,7 +1426,7 @@
     // BOM so Excel opens Thai text correctly.
     const blob = new Blob(['\ufeff' + lines.map(row => row.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob); const link = document.createElement('a');
-    link.href = url; link.download = `เวชภัณฑ์-${dateKey(new Date())}.csv`; document.body.append(link); link.click(); link.remove();
+    link.href = url; link.download = `เวชภัณฑ์${placeFilter === '__all' ? '' : `-${placeFilter}`}-${dateKey(new Date())}.csv`; document.body.append(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   });
   $('closeSupply').addEventListener('click', closeSupplyDialog);
@@ -1529,7 +1602,7 @@
       const backup = JSON.parse(await file.text());
       if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
       if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
-      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [] };
+      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [], discarded: Array.isArray(backup.discarded) ? backup.discarded : [] };
       for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
       save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
     } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }
