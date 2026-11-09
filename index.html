@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.3">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.4">
 </head>
 <body>
   <main class="shell">
@@ -149,6 +149,7 @@
           <input id="supplySearch" type="search" placeholder="🔍 ค้นหาชื่อหรือที่เก็บ" aria-label="ค้นหาเวชภัณฑ์">
           <button class="primary-button" type="button" id="addSupply">＋ เพิ่ม</button>
         </div>
+        <button class="bulk-link" type="button" id="bulkSupply">📋 เพิ่มหลายรายการทีเดียว</button>
         <div class="supply-filters" role="tablist" aria-label="กรองตามสถานะ">
           <button type="button" class="supply-filter active" data-filter="all">ทั้งหมด</button>
           <button type="button" class="supply-filter" data-filter="soon">ใกล้หมด</button>
@@ -277,6 +278,23 @@
       </div>
     </form>
   </div>
+  <div class="overlay" id="bulkOverlay" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div><h2 id="bulkTitle">เพิ่มหลายรายการ</h2><p>บรรทัดละ 1 รายการ: ชื่อ ตามด้วยวันหมดอายุ (ใส่ที่เก็บหลัง @ ได้)</p></div>
+        <button class="close-button" type="button" id="closeBulk" aria-label="ปิด">×</button>
+      </div>
+      <textarea id="bulkText" class="bulk-text" rows="7" placeholder="Paracetamol 500 mg 14/11/69&#10;Adrenaline 1 mg 03/2027 @ รถฉุกเฉิน&#10;น้ำเกลือ NSS 1000 ml 28 พ.ค. 70&#10;Betadine EXP NOV 2027"></textarea>
+      <div class="bulk-preview" id="bulkPreview"></div>
+      <div class="dialog-actions">
+        <span class="bulk-count" id="bulkCount"></span>
+        <div class="action-right">
+          <button class="secondary-button" type="button" id="cancelBulk">ยกเลิก</button>
+          <button class="primary-button" type="button" id="saveBulk" disabled>เพิ่มรายการ</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <section class="supply-print" id="supplyPrint" aria-hidden="true">
     <h1>รายการเวชภัณฑ์และวันหมดอายุ</h1>
     <p id="supplyPrintDate"></p>
@@ -340,7 +358,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.3';</script>
-  <script src="app.js?v=2026-11-09.3"></script>
+  <script>const APP_VERSION = '2026-11-09.4';</script>
+  <script src="app.js?v=2026-11-09.4"></script>
 </body>
 </html>

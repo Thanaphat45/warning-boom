@@ -509,3 +509,14 @@ footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
 }
 
 .use-first { display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: #e5383b; color: #fff; font-size: 11px; font-weight: 800; vertical-align: 2px; }
+
+.bulk-link { margin-top: 8px; padding: 4px 0; border: 0; background: none; color: var(--green-strong); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.bulk-text { width: 100%; padding: 10px 12px; border-radius: 12px; font: inherit; font-size: 15px; line-height: 1.6; resize: vertical; }
+.bulk-preview { display: grid; gap: 4px; max-height: 34vh; margin-top: 10px; overflow-y: auto; }
+.bulk-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--panel-2); font-size: 13px; }
+.bulk-row.bad { background: #fff0ee; color: #c81d25; }
+.bulk-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-row span { flex: 0 0 auto; color: var(--muted); }
+.bulk-row.bad span { color: #c81d25; }
+.bulk-count { color: var(--muted); font-size: 13px; }
+#saveBulk:disabled { opacity: .45; box-shadow: none; }

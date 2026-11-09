@@ -1203,6 +1203,75 @@
     data.supplies = supplies().filter(s => s.id !== editingSupplyId); save(); closeSupplyDialog(); renderSupplies();
   });
   $('addSupply').addEventListener('click', () => openSupplyDialog());
+  // ---- Bulk add: one supply per line, "name date [@ location]" ----
+  const MONTHS = { 'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6, 'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
+    'มกราคม': 1, 'กุมภาพันธ์': 2, 'มีนาคม': 3, 'เมษายน': 4, 'พฤษภาคม': 5, 'มิถุนายน': 6, 'กรกฎาคม': 7, 'สิงหาคม': 8, 'กันยายน': 9, 'ตุลาคม': 10, 'พฤศจิกายน': 11, 'ธันวาคม': 12,
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+  function toYear(raw) {
+    let y = Number(raw);
+    if (raw.length <= 2) y = y >= 50 ? 2500 + y : 2000 + y; // 69 -> 2569 (พ.ศ.), 27 -> 2027 (ค.ศ.)
+    if (y > 2400) y -= 543;                                 // พ.ศ. -> ค.ศ.
+    return y;
+  }
+  function validDate(y, m, d) {
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return y >= 2000 && y <= 2100 && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null;
+  }
+  const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+  function parseSupplyLine(line) {
+    let text = line.replace(/\s+/g, ' ').trim(); if (!text) return null;
+    let location = '';
+    const at = text.lastIndexOf('@'); if (at > 0) { location = text.slice(at + 1).trim(); text = text.slice(0, at).trim(); }
+    text = text.replace(/(^|\s)(exp\.?|expiry|วันหมดอายุ|หมดอายุ)\s*[:.]?\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+    const monthNames = Object.keys(MONTHS).map(k => k.replace(/\./g, '\\.')).join('|');
+    const patterns = [
+      // (?<!\d) stops a date from starting in the middle of a longer number (e.g. 2027-01-31).
+      [new RegExp(`(?<!\\d)(\\d{1,2})\\s*(${monthNames})\\s*(\\d{2,4})$`, 'i'), m => validDate(toYear(m[3]), MONTHS[m[2].toLowerCase()] || MONTHS[m[2]], Number(m[1]))],
+      [/(?<!\d)(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/, m => validDate(toYear(m[1]), Number(m[2]), Number(m[3]))],
+      [/(?<!\d)(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/, m => validDate(toYear(m[3]), Number(m[2]), Number(m[1]))],
+      [new RegExp(`(${monthNames})\\s*(\\d{2,4})$`, 'i'), m => { const y = toYear(m[2]); const mo = MONTHS[m[1].toLowerCase()] || MONTHS[m[1]]; return validDate(y, mo, lastDay(y, mo)); }],
+      [/(?<!\d)(\d{1,2})[\/.\-](\d{4})$/, m => { const y = toYear(m[2]); const mo = Number(m[1]); return mo >= 1 && mo <= 12 ? validDate(y, mo, lastDay(y, mo)) : null; }]
+    ];
+    for (const [re, toKey] of patterns) {
+      const m = text.match(re);
+      if (!m) continue;
+      const expiry = toKey(m); const name = text.slice(0, m.index).replace(/[-–:,]\s*$/, '').trim();
+      if (!expiry) return { line, error: 'วันที่ไม่ถูกต้อง' };
+      if (!name) return { line, error: 'ไม่มีชื่อ' };
+      return { name, expiry, location };
+    }
+    return { line, error: 'ไม่พบวันหมดอายุ' };
+  }
+  let bulkParsed = [];
+  function renderBulkPreview() {
+    bulkParsed = $('bulkText').value.split('\n').map(parseSupplyLine).filter(Boolean);
+    const ok = bulkParsed.filter(r => !r.error); const bad = bulkParsed.length - ok.length;
+    const fmt = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    $('bulkPreview').replaceChildren(...bulkParsed.map(r => {
+      const row = document.createElement('div'); row.className = `bulk-row${r.error ? ' bad' : ''}`;
+      const name = document.createElement('b'); name.textContent = r.error ? r.line : r.name;
+      const info = document.createElement('span');
+      if (r.error) info.textContent = `⚠️ ${r.error}`;
+      else { const [y, m, d] = r.expiry.split('-').map(Number); info.textContent = `${fmt.format(new Date(y, m - 1, d))}${r.location ? ` · ${r.location}` : ''}`; }
+      row.append(name, info); return row;
+    }));
+    $('bulkCount').textContent = bulkParsed.length ? `พร้อมเพิ่ม ${ok.length} รายการ${bad ? ` · อ่านไม่ได้ ${bad}` : ''}` : '';
+    $('saveBulk').disabled = !ok.length;
+    $('saveBulk').textContent = ok.length ? `เพิ่ม ${ok.length} รายการ` : 'เพิ่มรายการ';
+  }
+  function closeBulk() { $('bulkOverlay').classList.remove('open'); }
+  $('bulkSupply').addEventListener('click', () => { $('bulkText').value = ''; renderBulkPreview(); $('bulkOverlay').classList.add('open'); setTimeout(() => $('bulkText').focus(), 30); });
+  $('bulkText').addEventListener('input', renderBulkPreview);
+  $('closeBulk').addEventListener('click', closeBulk);
+  $('cancelBulk').addEventListener('click', closeBulk);
+  $('bulkOverlay').addEventListener('click', event => { if (event.target === $('bulkOverlay')) closeBulk(); });
+  $('saveBulk').addEventListener('click', () => {
+    const ok = bulkParsed.filter(r => !r.error); if (!ok.length) return;
+    const list = supplies();
+    ok.forEach(r => list.push({ id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, name: r.name, expiry: r.expiry, location: r.location, lot: '' }));
+    save(); closeBulk(); setSupplyFilter('all');
+  });
+
   function sortedSupplies() { return supplies().map(item => ({ ...item, days: daysUntil(item.expiry) })).sort((a, b) => a.days - b.days); }
   const thaiFullDate = key => { const [y, m, d] = key.split('-').map(Number); return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d)); };
   const statusText = days => days < 0 ? 'หมดอายุแล้ว' : days <= 30 ? 'ใกล้หมด' : days <= 90 ? 'เฝ้าระวัง' : 'ปกติ';
