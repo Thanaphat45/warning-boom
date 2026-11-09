@@ -1148,10 +1148,17 @@
       empty.style.whiteSpace = 'pre-line'; list.append(empty); return;
     }
     const fmt = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+    // "Use first" = the earliest not-yet-expired item among supplies sharing the same name.
+    const nameKey = n => n.trim().toLowerCase().replace(/\s+/g, ' ');
+    const groups = new Map();
+    all.forEach(i => { const k = nameKey(i.name); groups.set(k, (groups.get(k) || []).concat(i)); });
+    const useFirst = new Set();
+    groups.forEach(list => { if (list.length < 2) return; const first = list.filter(i => i.days >= 0).sort((a, b) => a.days - b.days)[0]; if (first) useFirst.add(first.id); });
     shown.forEach(item => {
       const [y, m, d] = item.expiry.split('-').map(Number);
       const row = document.createElement('button'); row.type = 'button'; row.className = `supply-item ${supplyState(item.days)}`;
       const name = document.createElement('span'); name.className = 's-name'; name.textContent = item.name;
+      if (useFirst.has(item.id)) { const tag = document.createElement('span'); tag.className = 'use-first'; tag.textContent = '⭐ ใช้ก่อน'; name.append(' ', tag); }
       const meta = document.createElement('span'); meta.className = 's-meta';
       meta.textContent = [`EXP ${fmt.format(new Date(y, m - 1, d))}`, item.location, item.lot].filter(Boolean).join(' · ');
       const left = document.createElement('span'); left.className = 's-left'; left.textContent = leftLabel(item.days);

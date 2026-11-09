@@ -194,7 +194,13 @@ ${lead}: ${weatherLine(w)}` : ''
           .sort((a, b) => a.days - b.days)
         if (due.length) {
           const label = (d: number) => d < 0 ? `หมดแล้ว ${-d} วัน` : d === 0 ? 'หมดวันนี้' : d === 1 ? 'หมดพรุ่งนี้' : `อีก ${d} วัน`
-          const lines = due.slice(0, 6).map(item => `${item.name} (${label(item.days)})`)
+          // Flag the lot to use first when the same supply has other, later-expiring entries.
+          const key = (n: string) => n.trim().toLowerCase().replace(/\s+/g, ' ')
+          const all = (payload?.supplies ?? []).filter(i => i && typeof i.expiry === 'string')
+          const usesFirst = (item: { name: string; expiry: string; days: number }) => item.days >= 0 &&
+            all.some(o => key(o.name) === key(item.name) && o.expiry > item.expiry) &&
+            !all.some(o => key(o.name) === key(item.name) && o.expiry < item.expiry && o.expiry >= clock.date)
+          const lines = due.slice(0, 6).map(item => `${item.name} (${label(item.days)})${usesFirst(item) ? ' ⭐ใช้ตัวนี้ก่อน' : ''}`)
           if (due.length > 6) lines.push(`และอีก ${due.length - 6} รายการ`)
           const expired = due.some(item => item.days <= 0)
           jobs.push({ date: clock.date, title: expired ? '💊 มีเวชภัณฑ์หมดอายุ' : '💊 เวชภัณฑ์ใกล้หมดอายุ', body: lines.join(' · '), mark: { last_supply_alert_for_date: clock.date } })
