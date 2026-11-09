@@ -1293,8 +1293,10 @@
       { name: 'Paracetamol 500 mg (ตัวอย่าง)', expiry: d(7), location: 'ห้องยา', days: 7 }
     ] };
   }
-  async function testSupplyAlarm() {
+  async function testSupplyAlarm(options = {}) {
+    const fromNotification = options.fromNotification === true;
     const { items, sample } = alarmItems();
+    if (fromNotification && sample) return; // nothing real to show (already handled)
     const expired = items.filter(i => i.days <= 0).length;
     $('alarmTitle').textContent = expired ? 'มีเวชภัณฑ์หมดอายุ!' : 'เวชภัณฑ์ใกล้หมดอายุ!';
     $('alarmSub').textContent = `${items.length} รายการต้องจัดการ${sample ? ' · นี่คือข้อมูลตัวอย่าง (ยังไม่มีรายการที่ใกล้หมด)' : ''}`;
@@ -1310,6 +1312,7 @@
     $('supplyAlarm').hidden = false;
     playSiren(3);
     try { navigator.vibrate?.([300, 120, 300, 120, 600, 200, 300, 120, 300]); } catch (_) {}
+    if (fromNotification) { $('alarmNote').textContent = '🔔 เปิดจากแจ้งเตือนเวชภัณฑ์'; return; }
     // Also fire a real system notification, like the morning reminder.
     try {
       if (!('Notification' in window)) { $('alarmNote').textContent = 'เครื่องนี้ไม่รองรับแจ้งเตือนของระบบ'; return; }
@@ -1328,7 +1331,16 @@
     } catch (error) { $('alarmNote').textContent = `ส่งแจ้งเตือนของระบบไม่สำเร็จ: ${error.message}`; }
   }
   function closeAlarm() { $('supplyAlarm').hidden = true; if (alarmStop) alarmStop(); try { navigator.vibrate?.(0); } catch (_) {} }
-  $('testSupplyAlarm').addEventListener('click', testSupplyAlarm);
+  $('testSupplyAlarm').addEventListener('click', () => testSupplyAlarm());
+  // Opened by tapping a supply notification: show the full-screen alarm with the real items.
+  function alarmFromNotification() { showTab('supplies'); testSupplyAlarm({ fromNotification: true }); }
+  if (new URLSearchParams(location.search).get('alarm') === 'supply') {
+    history.replaceState(null, '', location.pathname);
+    // Cloud data may still be loading right after launch: try again a bit later if nothing showed.
+    setTimeout(alarmFromNotification, 600);
+    setTimeout(() => { if ($('supplyAlarm').hidden) alarmFromNotification(); }, 3000);
+  }
+  navigator.serviceWorker?.addEventListener('message', event => { if (event.data?.type === 'show-supply-alarm') alarmFromNotification(); });
   $('alarmOk').addEventListener('click', closeAlarm);
   $('alarmView').addEventListener('click', () => { closeAlarm(); showTab('supplies'); setSupplyFilter(supplies().some(s => daysUntil(s.expiry) < 0) ? 'expired' : 'soon'); });
 

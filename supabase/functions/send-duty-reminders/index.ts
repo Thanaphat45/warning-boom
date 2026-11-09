@@ -149,7 +149,7 @@ Deno.serve(async request => {
   for (const row of subscriptions as PushSubscriptionRow[]) {
     try {
       const clock = localClock(now, row.timezone || 'Asia/Bangkok')
-      const jobs: Array<{ date: string; title?: string; body: string; mark: Record<string, string> }> = []
+      const jobs: Array<{ date: string; title?: string; body: string; mark: Record<string, string>; kind?: string }> = []
       const me = row.member_name?.trim()
 
       // Regular reminder (evening before, or same day) at reminder_time.
@@ -203,7 +203,7 @@ ${lead}: ${weatherLine(w)}` : ''
           const lines = due.slice(0, 6).map(item => `${item.name} (${label(item.days)})${usesFirst(item) ? ' ⭐ใช้ตัวนี้ก่อน' : ''}`)
           if (due.length > 6) lines.push(`และอีก ${due.length - 6} รายการ`)
           const expired = due.some(item => item.days <= 0)
-          jobs.push({ date: clock.date, title: expired ? '💊 มีเวชภัณฑ์หมดอายุ' : '💊 เวชภัณฑ์ใกล้หมดอายุ', body: lines.join(' · '), mark: { last_supply_alert_for_date: clock.date } })
+          jobs.push({ date: clock.date, title: expired ? '💊 มีเวชภัณฑ์หมดอายุ' : '💊 เวชภัณฑ์ใกล้หมดอายุ', body: lines.join(' · '), mark: { last_supply_alert_for_date: clock.date } , kind: 'supply' })
         }
       }
 
@@ -224,7 +224,7 @@ ${lead}: ${weatherLine(w)}` : ''
       for (const job of jobs) {
         try {
           await webpush.sendNotification(row.subscription, JSON.stringify({
-            title: job.title || 'ตารางหน้าที่พยาบาล', body: job.body, url: './', tag: `nursing-duty-${job.date}-${Object.keys(job.mark)[0]}`
+            title: job.title || 'ตารางหน้าที่พยาบาล', body: job.body, url: job.kind === 'supply' ? './?alarm=supply' : './', kind: job.kind || 'duty', tag: `nursing-duty-${job.date}-${Object.keys(job.mark)[0]}`
           }), { TTL: 600, urgency: 'high' })
           const { error: updateError } = await supabase.from('push_subscriptions')
             .update({ ...job.mark, updated_at: now.toISOString() }).eq('id', row.id)

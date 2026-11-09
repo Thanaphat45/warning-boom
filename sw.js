@@ -72,23 +72,33 @@ self.addEventListener('push', event => {
   try { if (event.data) message = { ...message, ...event.data.json() }; }
   catch (_) { if (event.data) message.body = event.data.text(); }
 
+  // Supply alarms are "loud": they stay until tapped, vibrate in a pattern and have action buttons.
+  const alarm = message.kind === 'supply';
   event.waitUntil(self.registration.showNotification(message.title, {
     body: message.body,
     icon: new URL('./icon.svg', self.registration.scope).href,
     badge: new URL('./icon.svg', self.registration.scope).href,
     tag: message.tag || 'nursing-duty-reminder',
-    renotify: false,
-    data: { url: message.url || './' }
+    renotify: alarm,
+    requireInteraction: alarm,
+    vibrate: alarm ? [300, 120, 300, 120, 600, 200, 300, 120, 300] : [200, 100, 200],
+    actions: alarm ? [{ action: 'open', title: '💊 ดูรายการ' }, { action: 'ok', title: '✔ รับทราบ' }] : [],
+    data: { url: message.url || './', kind: message.kind || 'duty' }
   }));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   if (event.action === 'ok') return; // "รับทราบ" just dismisses
-  const target = new URL(event.notification.data?.url || './', self.registration.scope).href;
+  const isAlarm = event.notification.data?.kind === 'supply';
+  const target = new URL(isAlarm ? './?alarm=supply' : (event.notification.data?.url || './'), self.registration.scope).href;
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
     for (const client of clients) {
-      if (client.url.startsWith(self.registration.scope) && 'focus' in client) return client.focus();
+      if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
+        // App already open: ask it to show the full-screen supply alarm.
+        if (isAlarm) client.postMessage({ type: 'show-supply-alarm' });
+        return client.focus();
+      }
     }
     return self.clients.openWindow(target);
   }));
