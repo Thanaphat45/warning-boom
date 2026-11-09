@@ -552,3 +552,33 @@ footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
 .discard-row button { padding: 0 6px; border: 0; background: none; color: var(--green-strong); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 #newLotSupply[hidden] { display: none; }
 .dialog-actions { flex-wrap: wrap; }
+
+/* ===== Supply alarm (test) ===== */
+.alarm-test { width: 100%; margin-top: 12px; min-height: 46px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #ff5a5f, #b5121b); color: #fff; font: inherit; font-size: 15px; font-weight: 800; box-shadow: 0 8px 20px #e5383b55; cursor: pointer; }
+.alarm-test:active { transform: scale(.98); }
+.supply-alarm { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; overflow: hidden; background: radial-gradient(circle at 50% 40%, #ff3b3b, #7a0008 70%); animation: alarm-flash .5s ease-in-out infinite alternate; }
+.supply-alarm[hidden] { display: none; }
+@keyframes alarm-flash { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+.alarm-rays { position: absolute; inset: -60%; background: repeating-conic-gradient(#ffffff22 0 10deg, transparent 10deg 20deg); animation: alarm-spin 6s linear infinite; }
+@keyframes alarm-spin { to { transform: rotate(360deg); } }
+.alarm-card { position: relative; width: min(420px, 100%); max-height: calc(100dvh - 36px); overflow-y: auto; overflow-x: hidden; padding: 26px 20px 20px; border-radius: 28px; background: #fff; color: #2b1513; text-align: center; box-shadow: 0 0 0 6px #ffffff55, 0 30px 80px #0008; animation: alarm-pop .5s cubic-bezier(.2, 1.6, .4, 1) both, alarm-shake .5s .5s ease-in-out 3; zoom: var(--ui-zoom, 1); }
+@keyframes alarm-pop { from { transform: scale(.4) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes alarm-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-10px) rotate(-2deg); } 40% { transform: translateX(10px) rotate(2deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+.alarm-siren { display: inline-block; font-size: 38px; line-height: 1; animation: siren 0.6s ease-in-out infinite; }
+@keyframes siren { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 #ff0000); } 50% { transform: scale(1.25); filter: drop-shadow(0 0 14px #ff0000); } }
+.alarm-pill { margin: 6px 0 4px; font-size: 72px; line-height: 1; animation: pill-wiggle 0.9s ease-in-out infinite; }
+@keyframes pill-wiggle { 0%, 100% { transform: rotate(0) scale(1); } 25% { transform: rotate(-18deg) scale(1.1); } 75% { transform: rotate(18deg) scale(1.1); } }
+.alarm-card h2 { margin: 6px 0 4px; color: #c81d25; font-size: 26px; letter-spacing: -.3px; }
+.alarm-sub { margin: 0 0 14px; color: #8c6662; font-size: 14px; }
+.alarm-list { display: grid; gap: 8px; text-align: left; }
+.alarm-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #fff3f2; border-left: 6px solid #fb8c00; animation: alarm-slide .4s ease-out both; }
+.alarm-item.expired { background: #ffe3e3; border-left-color: #e53935; }
+.alarm-item b { font-size: 16px; }
+.alarm-item small { display: block; color: #8c6662; font-size: 12px; }
+.alarm-item span { flex: 0 0 auto; padding: 5px 10px; border-radius: 10px; background: #fff; color: #c81d25; font-size: 13px; font-weight: 800; }
+@keyframes alarm-slide { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: none; } }
+.alarm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.alarm-ok, .alarm-view { min-height: 50px; border: 0; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
+.alarm-ok { background: linear-gradient(135deg, #ff5a5f, #b5121b); color: #fff; box-shadow: 0 8px 18px #e5383b55; }
+.alarm-view { background: #fff0ee; color: #c81d25; }
+.alarm-note { margin: 12px 0 0; color: #8c6662; font-size: 12px; }

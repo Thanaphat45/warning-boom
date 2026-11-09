@@ -1266,6 +1266,72 @@
     data.supplies = supplies().filter(s => s.id !== editingSupplyId); save(); closeSupplyDialog(); renderSupplies();
   });
   $('addSupply').addEventListener('click', () => openSupplyDialog());
+  // ---- Supply alarm test: dramatic in-app alert + real system notification ----
+  let alarmAudio = null; let alarmStop = null;
+  function playSiren(seconds = 3) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+      alarmAudio = alarmAudio || new Ctx(); const ctx = alarmAudio; if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sawtooth'; osc.connect(gain); gain.connect(ctx.destination);
+      const t0 = ctx.currentTime;
+      gain.gain.setValueAtTime(0.0001, t0); gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.05);
+      for (let i = 0; i < seconds * 2; i++) { // wee-woo
+        osc.frequency.setValueAtTime(700, t0 + i * 0.5); osc.frequency.linearRampToValueAtTime(1250, t0 + i * 0.5 + 0.25); osc.frequency.linearRampToValueAtTime(700, t0 + i * 0.5 + 0.5);
+      }
+      gain.gain.setValueAtTime(0.18, t0 + seconds - 0.1); gain.gain.exponentialRampToValueAtTime(0.0001, t0 + seconds);
+      osc.start(t0); osc.stop(t0 + seconds);
+      alarmStop = () => { try { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setValueAtTime(0.0001, ctx.currentTime); osc.stop(); } catch (_) {} };
+    } catch (_) {}
+  }
+  function alarmItems() {
+    const real = supplies().map(i => ({ ...i, days: daysUntil(i.expiry) })).filter(i => i.days <= 30).sort((a, b) => a.days - b.days);
+    if (real.length) return { items: real, sample: false };
+    const d = n => { const t = new Date(); t.setDate(t.getDate() + n); return dateKey(t); };
+    return { sample: true, items: [
+      { name: 'Adrenaline 1 mg (ตัวอย่าง)', expiry: d(0), location: 'รถฉุกเฉิน', days: 0 },
+      { name: 'Paracetamol 500 mg (ตัวอย่าง)', expiry: d(7), location: 'ห้องยา', days: 7 }
+    ] };
+  }
+  async function testSupplyAlarm() {
+    const { items, sample } = alarmItems();
+    const expired = items.filter(i => i.days <= 0).length;
+    $('alarmTitle').textContent = expired ? 'มีเวชภัณฑ์หมดอายุ!' : 'เวชภัณฑ์ใกล้หมดอายุ!';
+    $('alarmSub').textContent = `${items.length} รายการต้องจัดการ${sample ? ' · นี่คือข้อมูลตัวอย่าง (ยังไม่มีรายการที่ใกล้หมด)' : ''}`;
+    $('alarmList').replaceChildren(...items.slice(0, 6).map((item, index) => {
+      const row = document.createElement('div'); row.className = `alarm-item${item.days <= 0 ? ' expired' : ''}`; row.style.animationDelay = `${0.5 + index * 0.12}s`;
+      const left = document.createElement('div'); const b = document.createElement('b'); b.textContent = item.name;
+      const small = document.createElement('small'); small.textContent = [`EXP ${thaiShort(item.expiry)}`, item.location].filter(Boolean).join(' · ');
+      left.append(b, small);
+      const tag = document.createElement('span'); tag.textContent = leftLabel(item.days);
+      row.append(left, tag); return row;
+    }));
+    $('alarmNote').textContent = '';
+    $('supplyAlarm').hidden = false;
+    playSiren(3);
+    try { navigator.vibrate?.([300, 120, 300, 120, 600, 200, 300, 120, 300]); } catch (_) {}
+    // Also fire a real system notification, like the morning reminder.
+    try {
+      if (!('Notification' in window)) { $('alarmNote').textContent = 'เครื่องนี้ไม่รองรับแจ้งเตือนของระบบ'; return; }
+      if (Notification.permission === 'default') await Notification.requestPermission();
+      if (Notification.permission !== 'granted') { $('alarmNote').textContent = 'ยังไม่ได้อนุญาตแจ้งเตือน · ไปที่ ⚙️ ตั้งค่า → เปิด / บันทึกการแจ้งเตือน'; return; }
+      serviceWorkerRegistration = serviceWorkerRegistration || await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      const body = items.slice(0, 4).map(i => `${i.days <= 0 ? '🔴' : '🟠'} ${i.name} — ${leftLabel(i.days)}`).join('\n');
+      await serviceWorkerRegistration.showNotification(expired ? '🚨💊 มีเวชภัณฑ์หมดอายุ!' : '⚠️💊 เวชภัณฑ์ใกล้หมดอายุ', {
+        body: `${body}${items.length > 4 ? `\nและอีก ${items.length - 4} รายการ` : ''}`,
+        icon: new URL('./icon.svg', location.href).href, badge: new URL('./icon.svg', location.href).href,
+        tag: 'supply-alarm-test', renotify: true, requireInteraction: true,
+        vibrate: [300, 120, 300, 120, 600], data: { url: './' },
+        actions: [{ action: 'open', title: '💊 ดูรายการ' }, { action: 'ok', title: '✔ รับทราบ' }]
+      });
+      $('alarmNote').textContent = '📲 ส่งแจ้งเตือนของระบบแล้ว ลองดูที่แถบแจ้งเตือนของมือถือ';
+    } catch (error) { $('alarmNote').textContent = `ส่งแจ้งเตือนของระบบไม่สำเร็จ: ${error.message}`; }
+  }
+  function closeAlarm() { $('supplyAlarm').hidden = true; if (alarmStop) alarmStop(); try { navigator.vibrate?.(0); } catch (_) {} }
+  $('testSupplyAlarm').addEventListener('click', testSupplyAlarm);
+  $('alarmOk').addEventListener('click', closeAlarm);
+  $('alarmView').addEventListener('click', () => { closeAlarm(); showTab('supplies'); setSupplyFilter(supplies().some(s => daysUntil(s.expiry) < 0) ? 'expired' : 'soon'); });
+
   // New lot arrived: keep name and place, clear the date and lot, and save over the old entry.
   $('newLotSupply').addEventListener('click', () => {
     $('supplyDialogTitle').textContent = `ล็อตใหม่: ${$('supplyName').value}`;

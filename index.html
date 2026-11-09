@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.7">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.8">
 </head>
 <body>
   <main class="shell">
@@ -142,6 +142,7 @@
       <section class="card supply-summary-card">
         <div class="card-head"><span class="card-icon">💊</span><div><h3>เวชภัณฑ์</h3><p>บันทึกวันหมดอายุ แล้วแอปจะเตือนก่อนหมด</p></div></div>
         <div class="supply-stats" id="supplyStats"></div>
+        <button class="alarm-test" type="button" id="testSupplyAlarm">🔔 ทดสอบแจ้งเตือนเวชภัณฑ์</button>
       </section>
 
       <section class="card">
@@ -314,6 +315,21 @@
     <p id="supplyPrintDate"></p>
     <table><thead><tr><th>#</th><th>ชื่อเวชภัณฑ์</th><th>วันหมดอายุ</th><th>เหลือ</th><th>ที่เก็บ</th><th>Lot / หมายเหตุ</th><th>ตรวจแล้ว</th></tr></thead><tbody id="supplyPrintBody"></tbody></table>
   </section>
+  <div class="supply-alarm" id="supplyAlarm" role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle" hidden>
+    <div class="alarm-rays" aria-hidden="true"></div>
+    <div class="alarm-card">
+      <div class="alarm-siren" aria-hidden="true">🚨</div>
+      <div class="alarm-pill" aria-hidden="true">💊</div>
+      <h2 id="alarmTitle">เวชภัณฑ์ต้องจัดการ!</h2>
+      <p class="alarm-sub" id="alarmSub"></p>
+      <div class="alarm-list" id="alarmList"></div>
+      <div class="alarm-actions">
+        <button type="button" class="alarm-ok" id="alarmOk">รับทราบ ✔</button>
+        <button type="button" class="alarm-view" id="alarmView">ดูรายการ</button>
+      </div>
+      <p class="alarm-note" id="alarmNote"></p>
+    </div>
+  </div>
   <nav class="bottom-nav" aria-label="เมนูหลัก">
     <button type="button" class="nav-item active" data-tab="calendar"><span class="nav-icon">📅</span><span>ปฏิทิน</span></button>
     <button type="button" class="nav-item" data-tab="duties"><span class="nav-icon">📌</span><span>หน้าที่</span></button>
@@ -372,7 +388,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.7';</script>
-  <script src="app.js?v=2026-11-09.7"></script>
+  <script>const APP_VERSION = '2026-11-09.8';</script>
+  <script src="app.js?v=2026-11-09.8"></script>
 </body>
 </html>
