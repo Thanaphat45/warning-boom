@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-06.14">
+  <link rel="stylesheet" href="styles.css?v=2026-11-09.1">
 </head>
 <body>
   <main class="shell">
@@ -35,6 +35,7 @@
         <p id="todayDate" class="today-sub"></p>
         <p id="todayHoliday" class="today-holiday" hidden></p>
         <p id="holidayCountdown" class="holiday-countdown" hidden></p>
+        <button type="button" class="supply-alert" id="todaySupplyAlert" hidden></button>
       </div>
       <button type="button" class="weather-card" id="weatherCard">
         <span class="weather-icon" id="weatherIcon">🌤️</span>
@@ -137,6 +138,26 @@
       </section>
     </div>
 
+    <div class="view" id="view-supplies" hidden>
+      <section class="card supply-summary-card">
+        <div class="card-head"><span class="card-icon">💊</span><div><h3>เวชภัณฑ์</h3><p>บันทึกวันหมดอายุ แล้วแอปจะเตือนก่อนหมด</p></div></div>
+        <div class="supply-stats" id="supplyStats"></div>
+      </section>
+
+      <section class="card">
+        <div class="supply-toolbar">
+          <input id="supplySearch" type="search" placeholder="🔍 ค้นหาชื่อหรือที่เก็บ" aria-label="ค้นหาเวชภัณฑ์">
+          <button class="primary-button" type="button" id="addSupply">＋ เพิ่ม</button>
+        </div>
+        <div class="supply-filters" role="tablist" aria-label="กรองตามสถานะ">
+          <button type="button" class="supply-filter active" data-filter="all">ทั้งหมด</button>
+          <button type="button" class="supply-filter" data-filter="soon">ใกล้หมด</button>
+          <button type="button" class="supply-filter" data-filter="expired">หมดอายุแล้ว</button>
+        </div>
+        <div class="supply-list" id="supplyList"></div>
+      </section>
+    </div>
+
     <div class="view" id="view-settings" hidden>
       <section class="card sync-panel">
         <div class="card-head"><span class="card-icon">👤</span><div><h3>บัญชีและการซิงก์</h3><p>ล็อกอินบัญชีเดียวกันทุกเครื่อง เพื่อเห็นตารางเดียวกัน</p></div></div>
@@ -184,6 +205,7 @@
             <label class="checkbox-field morning-toggle"><input id="morningOn" type="checkbox" checked> ☀️ เตือนตอนเช้าว่าวันนี้มีหน้าที่อะไร</label>
             <input id="morningTime" type="time" value="07:30" aria-label="เวลาเตือนตอนเช้า">
             <textarea id="morningMessage" hidden></textarea>
+            <label class="checkbox-field morning-toggle"><input id="supplyAlertOn" type="checkbox" checked> 💊 เตือนเวชภัณฑ์ใกล้หมดอายุ (เหลือ 30, 14, 7, 3, 1 วัน และวันที่หมด)</label>
             <label class="checkbox-field morning-toggle"><input id="rainAlertOn" type="checkbox" checked> ☔ เตือนถ้าฝนจะตกตอนเลิกงาน (เตือนก่อน 1 ชม.)</label>
             <label class="field-label" for="workEnd">เวลาเลิกงาน</label>
             <input id="workEnd" type="time" value="16:30">
@@ -232,9 +254,33 @@
         <div class="note-list" id="noteList"></div>
       </section>
 
+  <div class="overlay" id="supplyOverlay" role="dialog" aria-modal="true" aria-labelledby="supplyDialogTitle">
+    <form class="dialog" id="supplyForm">
+      <div class="dialog-head">
+        <div><h2 id="supplyDialogTitle">เพิ่มเวชภัณฑ์</h2><p>วันหมดอายุดูได้จากกล่องหรือขวด (EXP)</p></div>
+        <button class="close-button" type="button" id="closeSupply" aria-label="ปิด">×</button>
+      </div>
+      <div class="field"><label for="supplyName">ชื่อเวชภัณฑ์</label><input id="supplyName" maxlength="60" required placeholder="เช่น Paracetamol 500 mg" list="supplyNameList"><datalist id="supplyNameList"></datalist></div>
+      <div class="field"><label for="supplyExpiry">วันหมดอายุ</label><input id="supplyExpiry" type="date" required></div>
+      <div class="supply-two">
+        <div class="field"><label for="supplyQty">จำนวน</label><input id="supplyQty" type="number" min="0" step="1" inputmode="numeric" placeholder="เช่น 20"></div>
+        <div class="field"><label for="supplyUnit">หน่วย</label><input id="supplyUnit" maxlength="12" placeholder="เม็ด / ขวด / กล่อง" list="supplyUnitList"><datalist id="supplyUnitList"><option value="เม็ด"><option value="แผง"><option value="ขวด"><option value="กล่อง"><option value="หลอด"><option value="ชิ้น"><option value="ซอง"><option value="แอมป์"><option value="ไวแอล"></datalist></div>
+      </div>
+      <div class="field"><label for="supplyLocation">ที่เก็บ (ถ้ามี)</label><input id="supplyLocation" maxlength="40" placeholder="เช่น ห้องยา ชั้น 2 / รถฉุกเฉิน" list="supplyLocationList"><datalist id="supplyLocationList"></datalist></div>
+      <div class="field"><label for="supplyLot">Lot / หมายเหตุ (ถ้ามี)</label><input id="supplyLot" maxlength="60" placeholder="เช่น LOT A1234"></div>
+      <div class="dialog-actions">
+        <button class="delete-button" type="button" id="deleteSupply" hidden>ลบรายการนี้</button>
+        <div class="action-right">
+          <button class="secondary-button" type="button" id="cancelSupply">ยกเลิก</button>
+          <button class="primary-button" type="submit">บันทึก</button>
+        </div>
+      </div>
+    </form>
+  </div>
   <nav class="bottom-nav" aria-label="เมนูหลัก">
     <button type="button" class="nav-item active" data-tab="calendar"><span class="nav-icon">📅</span><span>ปฏิทิน</span></button>
     <button type="button" class="nav-item" data-tab="duties"><span class="nav-icon">📌</span><span>หน้าที่</span></button>
+    <button type="button" class="nav-item" data-tab="supplies"><span class="nav-icon">💊</span><span>เวชภัณฑ์</span><span class="nav-badge" id="supplyBadge" hidden></span></button>
     <button type="button" class="nav-item" data-tab="settings"><span class="nav-icon">⚙️</span><span>ตั้งค่า</span></button>
   </nav>
 
@@ -289,7 +335,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-06.14';</script>
-  <script src="app.js?v=2026-11-06.14"></script>
+  <script>const APP_VERSION = '2026-11-09.1';</script>
+  <script src="app.js?v=2026-11-09.1"></script>
 </body>
 </html>

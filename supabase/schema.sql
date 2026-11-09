@@ -180,3 +180,7 @@ revoke all on function public.create_shared_schedule(text, jsonb) from public;
 revoke all on function public.join_shared_schedule(text) from public;
 grant execute on function public.create_shared_schedule(text, jsonb) to authenticated;
 grant execute on function public.join_shared_schedule(text) to authenticated;
+
+-- Medical supply expiry alerts (supplies live in schedule_data.payload.supplies).
+alter table public.push_subscriptions add column if not exists supply_alert boolean not null default true;
+alter table public.push_subscriptions add column if not exists last_supply_alert_for_date date;

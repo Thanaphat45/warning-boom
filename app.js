@@ -62,13 +62,14 @@
         stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
         stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
         stored.notes = stored.notes && typeof stored.notes === 'object' && !Array.isArray(stored.notes) ? stored.notes : {};
+        stored.supplies = Array.isArray(stored.supplies) ? stored.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : [];
         for (const entries of Object.values(stored.entries)) {
           if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
         }
         return stored;
       }
     } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
-    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {} };
+    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {}, supplies: [] };
   }
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -104,7 +105,8 @@
       colors: value.colors && typeof value.colors === 'object' ? value.colors : {},
       templates: value.templates && typeof value.templates === 'object' ? value.templates : {},
       members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : [],
-      notes: value.notes && typeof value.notes === 'object' && !Array.isArray(value.notes) ? value.notes : {}
+      notes: value.notes && typeof value.notes === 'object' && !Array.isArray(value.notes) ? value.notes : {},
+      supplies: Array.isArray(value.supplies) ? value.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : []
     };
     for (const entries of Object.values(normalized.entries)) {
       if (Array.isArray(entries)) entries.forEach(entry => { entry.done = false; });
@@ -170,12 +172,12 @@
   function weatherPos() { try { return JSON.parse(localStorage.getItem('nursing-duty-weather-pos-v1') || 'null'); } catch (_) { return null; } }
   function weatherFields() {
     const pos = weatherPos();
-    return { rain_alert: $('rainAlertOn').checked, work_end: $('workEnd').value || '16:30', weather_lat: pos?.lat ?? null, weather_lon: pos?.lon ?? null, last_rain_alert_for_date: null };
+    return { supply_alert: $('supplyAlertOn').checked, rain_alert: $('rainAlertOn').checked, work_end: $('workEnd').value || '16:30', weather_lat: pos?.lat ?? null, weather_lon: pos?.lon ?? null, last_rain_alert_for_date: null };
   }
   function morningMessageValue() { return null; } // greeting lines are built into the server; love notes stay hidden in the app
   function morningValue() { return $('morningOn').checked ? ($('morningTime').value || '07:30') : null; }
   function saveReminderPref() {
-    try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value, rain: $('rainAlertOn').checked, workEnd: $('workEnd').value })); } catch (_) {}
+    try { localStorage.setItem(REMINDER_PREF_KEY, JSON.stringify({ time: $('reminderTime').value, offset: $('reminderOffset').value, morning: morningValue(), message: $('morningMessage').value, rain: $('rainAlertOn').checked, workEnd: $('workEnd').value, supply: $('supplyAlertOn').checked })); } catch (_) {}
   }
   function applyReminderPref(time, offset, morning) {
     if (time) $('reminderTime').value = String(time).slice(0, 5);
@@ -195,20 +197,20 @@
       let row = null;
       if (subscription) {
         ({ data: row } = await supabaseClient.from('push_subscriptions')
-          .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
+          .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end,supply_alert,enabled').eq('endpoint', subscription.endpoint).maybeSingle());
       }
       if (!row && currentUser) {
         // This device isn't registered yet: use the same time as the account's other devices.
         const { data: rows } = await supabaseClient.from('push_subscriptions')
-          .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
+          .select('reminder_time,reminder_offset,morning_time,morning_message,rain_alert,work_end,supply_alert').eq('user_id', currentUser.id).order('updated_at', { ascending: false }).limit(1);
         const shared = rows?.[0];
-        if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); if (shared.work_end) $('workEnd').value = String(shared.work_end).slice(0, 5); $('rainAlertOn').checked = shared.rain_alert !== false; if (shared.morning_message) $('morningMessage').value = shared.morning_message; saveReminderPref(); }
+        if (shared) { applyReminderPref(shared.reminder_time, shared.reminder_offset, shared.morning_time); if (shared.work_end) $('workEnd').value = String(shared.work_end).slice(0, 5); $('rainAlertOn').checked = shared.rain_alert !== false; $('supplyAlertOn').checked = shared.supply_alert !== false; if (shared.morning_message) $('morningMessage').value = shared.morning_message; saveReminderPref(); }
         if ('Notification' in window && Notification.permission === 'granted') { await enablePushNotifications(); return; }
         if (shared) $('notificationStatus').textContent = `บัญชีนี้เตือนเวลา ${String(shared.reminder_time).slice(0, 5)} · กด "เปิด / บันทึกการแจ้งเตือน" เพื่อรับแจ้งเตือนบนเครื่องนี้ด้วย`;
         return;
       }
       if (!row) return;
-      applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); if (row.work_end) $('workEnd').value = String(row.work_end).slice(0, 5); $('rainAlertOn').checked = row.rain_alert !== false; if (row.morning_message) $('morningMessage').value = row.morning_message; saveReminderPref();
+      applyReminderPref(row.reminder_time, row.reminder_offset, row.morning_time); if (row.work_end) $('workEnd').value = String(row.work_end).slice(0, 5); $('rainAlertOn').checked = row.rain_alert !== false; $('supplyAlertOn').checked = row.supply_alert !== false; if (row.morning_message) $('morningMessage').value = row.morning_message; saveReminderPref();
       if (row.enabled) $('notificationStatus').textContent = `เปิดแจ้งเตือนอยู่ เวลา ${String(row.reminder_time).slice(0, 5)} (${row.reminder_offset === 'day_before' ? 'คืนก่อนวันมีหน้าที่' : 'วันมีหน้าที่'})`;
     } catch (_) { /* Keep local values if the server can't be reached. */ }
   }
@@ -750,6 +752,7 @@
   }
   function renderAll() {
     renderFilterBar(); renderCalendar(); renderToday(); renderWeek(); renderTemplates(); setView(activeView);
+    if (typeof renderSupplies === 'function' && $('supplyList')) renderSupplies();
   }
   function setView(view) {
     activeView = view;
@@ -1105,6 +1108,105 @@
   $('printSchedule').addEventListener('click', () => window.print());
   $('shareImage').addEventListener('click', shareScheduleImage);
   $('loveNote').addEventListener('click', openLoveNote);
+  // ---------------- Supplies (เวชภัณฑ์) with expiry dates ----------------
+  let supplyFilter = 'all'; let editingSupplyId = null;
+  function supplies() { if (!Array.isArray(data.supplies)) data.supplies = []; return data.supplies; }
+  function daysUntil(key) {
+    const [y, m, d] = key.split('-').map(Number); const t = new Date();
+    return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
+  }
+  function supplyState(days) { return days < 0 ? 'expired' : days <= 30 ? 'soon' : days <= 90 ? 'watch' : 'ok'; }
+  function leftLabel(days) {
+    if (days < 0) return `หมดแล้ว ${-days} วัน`;
+    if (days === 0) return 'หมดวันนี้';
+    if (days === 1) return 'หมดพรุ่งนี้';
+    if (days <= 60) return `อีก ${days} วัน`;
+    const months = Math.round(days / 30); return months < 12 ? `อีก ~${months} เดือน` : `อีก ~${(days / 365).toFixed(1)} ปี`;
+  }
+  function renderSupplies() {
+    const list = $('supplyList'); if (!list) return;
+    const all = supplies().map(item => ({ ...item, days: daysUntil(item.expiry) })).sort((a, b) => a.days - b.days);
+    const count = { expired: all.filter(i => i.days < 0).length, soon: all.filter(i => i.days >= 0 && i.days <= 30).length };
+    count.ok = all.length - count.expired - count.soon;
+    $('supplyStats').replaceChildren(...[['expired', 'หมดอายุแล้ว'], ['soon', 'ใกล้หมด (≤30 วัน)'], ['ok', 'ปกติ']].map(([key, label]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = `supply-stat ${key}`;
+      b.innerHTML = `<strong>${count[key]}</strong><span>${label}</span>`;
+      b.addEventListener('click', () => setSupplyFilter(key === 'ok' ? 'all' : key)); return b;
+    }));
+    const urgent = count.expired + count.soon;
+    $('supplyBadge').hidden = !urgent; $('supplyBadge').textContent = urgent;
+    const alert = $('todaySupplyAlert');
+    alert.hidden = !urgent;
+    alert.textContent = urgent ? `💊 เวชภัณฑ์${count.expired ? ` หมดอายุแล้ว ${count.expired}` : ''}${count.expired && count.soon ? ' ·' : ''}${count.soon ? ` ใกล้หมด ${count.soon}` : ''} รายการ · แตะเพื่อดู` : '';
+    const q = ($('supplySearch').value || '').trim().toLowerCase();
+    const shown = all.filter(i => (supplyFilter === 'all' || (supplyFilter === 'expired' ? i.days < 0 : i.days >= 0 && i.days <= 30)) &&
+      (!q || `${i.name} ${i.location || ''} ${i.lot || ''}`.toLowerCase().includes(q)));
+    list.replaceChildren();
+    if (!shown.length) {
+      const empty = document.createElement('div'); empty.className = 'supply-empty';
+      empty.textContent = all.length ? 'ไม่มีรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีเวชภัณฑ์\nกด "＋ เพิ่ม" เพื่อบันทึกรายการแรก';
+      empty.style.whiteSpace = 'pre-line'; list.append(empty); return;
+    }
+    const fmt = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+    shown.forEach(item => {
+      const [y, m, d] = item.expiry.split('-').map(Number);
+      const row = document.createElement('button'); row.type = 'button'; row.className = `supply-item ${supplyState(item.days)}`;
+      const name = document.createElement('span'); name.className = 's-name'; name.textContent = item.name;
+      const meta = document.createElement('span'); meta.className = 's-meta';
+      meta.textContent = [`EXP ${fmt.format(new Date(y, m - 1, d))}`, item.qty !== '' && item.qty != null ? `${item.qty} ${item.unit || ''}`.trim() : '', item.location, item.lot].filter(Boolean).join(' · ');
+      const left = document.createElement('span'); left.className = 's-left'; left.textContent = leftLabel(item.days);
+      row.append(name, left, meta);
+      row.addEventListener('click', () => openSupplyDialog(item.id));
+      list.append(row);
+    });
+  }
+  function setSupplyFilter(filter) {
+    supplyFilter = filter;
+    document.querySelectorAll('.supply-filter').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+    renderSupplies();
+  }
+  function fillDatalist(id, values) {
+    const box = $(id); box.replaceChildren(...[...new Set(values.filter(Boolean))].sort().map(v => { const o = document.createElement('option'); o.value = v; return o; }));
+  }
+  function openSupplyDialog(id = null) {
+    editingSupplyId = id; const item = supplies().find(s => s.id === id);
+    $('supplyDialogTitle').textContent = item ? 'แก้ไขเวชภัณฑ์' : 'เพิ่มเวชภัณฑ์';
+    $('supplyName').value = item?.name || ''; $('supplyExpiry').value = item?.expiry || '';
+    $('supplyQty').value = item?.qty ?? ''; $('supplyUnit').value = item?.unit || '';
+    $('supplyLocation').value = item?.location || ''; $('supplyLot').value = item?.lot || '';
+    $('deleteSupply').hidden = !item;
+    fillDatalist('supplyNameList', supplies().map(s => s.name));
+    fillDatalist('supplyLocationList', supplies().map(s => s.location));
+    $('supplyOverlay').classList.add('open');
+    setTimeout(() => $('supplyName').focus(), 30);
+  }
+  function closeSupplyDialog() { $('supplyOverlay').classList.remove('open'); editingSupplyId = null; }
+  $('supplyForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const name = $('supplyName').value.trim(); const expiry = $('supplyExpiry').value;
+    if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(expiry)) return;
+    const qtyRaw = $('supplyQty').value.trim();
+    const record = { id: editingSupplyId || `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, expiry,
+      qty: qtyRaw === '' ? '' : Math.max(0, Math.round(Number(qtyRaw))), unit: $('supplyUnit').value.trim(),
+      location: $('supplyLocation').value.trim(), lot: $('supplyLot').value.trim() };
+    const list = supplies(); const at = list.findIndex(s => s.id === record.id);
+    if (at >= 0) list[at] = record; else list.push(record);
+    save(); closeSupplyDialog(); renderSupplies();
+  });
+  $('deleteSupply').addEventListener('click', () => {
+    const item = supplies().find(s => s.id === editingSupplyId);
+    if (!item || !confirm(`ลบ "${item.name}" (EXP ${item.expiry}) หรือไม่?`)) return;
+    data.supplies = supplies().filter(s => s.id !== editingSupplyId); save(); closeSupplyDialog(); renderSupplies();
+  });
+  $('addSupply').addEventListener('click', () => openSupplyDialog());
+  $('closeSupply').addEventListener('click', closeSupplyDialog);
+  $('cancelSupply').addEventListener('click', closeSupplyDialog);
+  $('supplyOverlay').addEventListener('click', event => { if (event.target === $('supplyOverlay')) closeSupplyDialog(); });
+  $('supplySearch').addEventListener('input', renderSupplies);
+  document.querySelectorAll('.supply-filter').forEach(b => b.addEventListener('click', () => setSupplyFilter(b.dataset.filter)));
+  $('todaySupplyAlert').addEventListener('click', () => { showTab('supplies'); setSupplyFilter($('todaySupplyAlert').textContent.includes('หมดอายุแล้ว') ? 'expired' : 'soon'); });
+  $('supplyAlertOn').addEventListener('change', onReminderSettingChange);
+
   // Font size (per device)
   const ZOOM_KEY = 'nursing-duty-ui-zoom';
   function applyZoom(value) {
@@ -1248,7 +1350,7 @@
   $('rainAlertOn').addEventListener('change', () => { $('workEnd').disabled = !$('rainAlertOn').checked; onReminderSettingChange(); });
   $('workEnd').addEventListener('change', onReminderSettingChange);
   $('morningOn').addEventListener('change', () => { $('morningTime').disabled = !$('morningOn').checked; onReminderSettingChange(); });
-  try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) { applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); if (typeof pref.message === 'string') $('morningMessage').value = pref.message; if (typeof pref.rain === 'boolean') $('rainAlertOn').checked = pref.rain; if (pref.workEnd) $('workEnd').value = pref.workEnd; } } catch (_) {}
+  try { const pref = JSON.parse(localStorage.getItem(REMINDER_PREF_KEY) || 'null'); if (pref) { applyReminderPref(pref.time, pref.offset, pref.morning === undefined ? '07:30' : pref.morning); if (typeof pref.message === 'string') $('morningMessage').value = pref.message; if (typeof pref.rain === 'boolean') $('rainAlertOn').checked = pref.rain; if (pref.workEnd) $('workEnd').value = pref.workEnd; if (typeof pref.supply === 'boolean') $('supplyAlertOn').checked = pref.supply; } } catch (_) {}
   $('copyShareCode').addEventListener('click', async () => {
     const code = $('currentShareCode').textContent.replace(/^รหัสเชิญ:\s*/, '');
     try { await navigator.clipboard.writeText(code); syncStatus('คัดลอกรหัสเชิญแล้ว'); }
@@ -1270,7 +1372,7 @@
       const backup = JSON.parse(await file.text());
       if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
       if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
-      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {} };
+      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [] };
       for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
       save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
     } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }

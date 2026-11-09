@@ -19,6 +19,8 @@ type PushSubscriptionRow = {
   rain_alert: boolean | null
   work_end: string | null
   last_rain_alert_for_date: string | null
+  supply_alert: boolean | null
+  last_supply_alert_for_date: string | null
 }
 
 function localClock(now: Date, timezone: string) {
@@ -72,7 +74,7 @@ Deno.serve(async request => {
   })
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from('push_subscriptions')
-    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date,morning_message,weather_lat,weather_lon,rain_alert,work_end,last_rain_alert_for_date')
+    .select('id,schedule_id,endpoint,subscription,reminder_time,reminder_offset,timezone,last_sent_for_date,member_name,morning_time,last_morning_for_date,morning_message,weather_lat,weather_lon,rain_alert,work_end,last_rain_alert_for_date,supply_alert,last_supply_alert_for_date')
     .eq('enabled', true)
     .limit(500)
 
@@ -177,6 +179,26 @@ ${lead}: ${weatherLine(w)}` : ''
         const w = row.weather_lat != null && row.weather_lon != null ? await getWeather(row.weather_lat, row.weather_lon) : null
         const wx = w ? `\n${weatherLine(w)}` : ''
         if (duties.length || hasNote) jobs.push({ date: clock.date, title: cheer || 'ตารางหน้าที่พยาบาล', body: (duties.length ? `☀️ วันนี้ (${thaiDate(clock.date)}) มีหน้าที่: ${duties.join(', ')}${noteLine}` : `☀️ วันนี้ (${thaiDate(clock.date)}) ไม่มีหน้าที่${noteLine}`) + wx, mark: { last_morning_for_date: clock.date } })
+      }
+
+      // Medical supply expiry alert: once a day at the morning time (or 08:00), only when an item
+      // reaches 30/14/7/3/1/0 days left, or is expired (repeated weekly until it is removed).
+      const supplyTime = row.morning_time || '08:00'
+      if (row.supply_alert !== false && row.last_supply_alert_for_date !== clock.date && inWindow(clock.minuteOfDay, supplyTime)) {
+        const payload = scheduleById.get(row.schedule_id) as { supplies?: Array<{ name: string; expiry: string; qty?: number | string; unit?: string }> } | undefined
+        const today = Date.parse(`${clock.date}T00:00:00Z`)
+        const due = (payload?.supplies ?? [])
+          .filter(item => item && typeof item.expiry === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.expiry))
+          .map(item => ({ ...item, days: Math.round((Date.parse(`${item.expiry}T00:00:00Z`) - today) / 86400000) }))
+          .filter(item => [30, 14, 7, 3, 1, 0].includes(item.days) || (item.days < 0 && -item.days % 7 === 0))
+          .sort((a, b) => a.days - b.days)
+        if (due.length) {
+          const label = (d: number) => d < 0 ? `หมดแล้ว ${-d} วัน` : d === 0 ? 'หมดวันนี้' : d === 1 ? 'หมดพรุ่งนี้' : `อีก ${d} วัน`
+          const lines = due.slice(0, 6).map(item => `${item.name} (${label(item.days)})`)
+          if (due.length > 6) lines.push(`และอีก ${due.length - 6} รายการ`)
+          const expired = due.some(item => item.days <= 0)
+          jobs.push({ date: clock.date, title: expired ? '💊 มีเวชภัณฑ์หมดอายุ' : '💊 เวชภัณฑ์ใกล้หมดอายุ', body: lines.join(' · '), mark: { last_supply_alert_for_date: clock.date } })
+        }
       }
 
       // Rain alert one hour before leaving work, only on days with duties (= working days).
