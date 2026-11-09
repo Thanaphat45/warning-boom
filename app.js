@@ -1248,6 +1248,15 @@
     const row = document.createElement('div'); row.className = 'bulk-row-edit';
     const name = document.createElement('input'); name.placeholder = 'เช่น Paracetamol 500 mg'; name.maxLength = 60; name.setAttribute('list', 'supplyNameList');
     const date = document.createElement('input'); date.type = 'date';
+    const place = document.createElement('input'); place.className = 'bulk-place'; place.maxLength = 40; place.placeholder = '📍 ที่เก็บ (ถ้ามี)'; place.setAttribute('list', 'supplyLocationList');
+    // New rows start with the previous row's storage place; edit it only when this item lives elsewhere.
+    const prev = $('bulkRows').lastElementChild?.querySelector('.bulk-place');
+    if (prev) place.value = prev.value;
+    place.addEventListener('input', () => {
+      // Typing a place also fills the empty rows below it, so a whole batch for one room needs typing only once.
+      let next = row.nextElementSibling;
+      while (next) { const p = next.querySelector('.bulk-place'); const [n] = next.querySelectorAll('input'); if (!n.value.trim()) p.value = place.value; next = next.nextElementSibling; }
+    });
     const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'bulk-remove'; remove.textContent = '×'; remove.setAttribute('aria-label', 'ลบแถว');
     remove.addEventListener('click', () => { row.remove(); if (!$('bulkRows').children.length) addBulkRow(); updateBulkCount(); });
     name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); date.focus(); try { date.showPicker(); } catch (_) {} } });
@@ -1257,13 +1266,12 @@
       if (row === last && name.value.trim() && date.value) addBulkRow();
     };
     name.addEventListener('input', touched); date.addEventListener('change', touched); date.addEventListener('input', touched);
-    row.append(name, date, remove); $('bulkRows').append(row);
+    row.append(name, date, remove, place); $('bulkRows').append(row);
     if (focus) setTimeout(() => name.focus(), 30);
     return row;
   }
   function rowEntries() {
-    const location = $('bulkLocation').value.trim();
-    return [...$('bulkRows').children].map(row => { const [name, date] = row.querySelectorAll('input'); return { name: name.value.trim(), expiry: date.value, location }; })
+    return [...$('bulkRows').children].map(row => { const [name, date] = row.querySelectorAll('input'); return { name: name.value.trim(), expiry: date.value, location: row.querySelector('.bulk-place').value.trim() }; })
       .filter(r => r.name && /^\d{4}-\d{2}-\d{2}$/.test(r.expiry));
   }
   function updateBulkCount() {
@@ -1298,7 +1306,7 @@
   }
   function closeBulk() { $('bulkOverlay').classList.remove('open'); }
   $('bulkSupply').addEventListener('click', () => {
-    $('bulkText').value = ''; $('bulkLocation').value = ''; $('bulkRows').replaceChildren();
+    $('bulkText').value = ''; $('bulkRows').replaceChildren();
     fillDatalist('supplyNameList', supplies().map(s => s.name)); fillDatalist('supplyLocationList', supplies().map(s => s.location));
     addBulkRow(true); addBulkRow(); addBulkRow();
     setBulkMode('rows'); $('bulkOverlay').classList.add('open');
