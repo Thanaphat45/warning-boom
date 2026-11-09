@@ -62,6 +62,7 @@
         stored.templates = stored.templates && typeof stored.templates === 'object' ? stored.templates : {};
         stored.members = Array.isArray(stored.members) ? stored.members.filter(item => typeof item === 'string') : [];
         stored.notes = stored.notes && typeof stored.notes === 'object' && !Array.isArray(stored.notes) ? stored.notes : {};
+        stored.checks = stored.checks && typeof stored.checks === 'object' && !Array.isArray(stored.checks) ? stored.checks : {};
         stored.discarded = Array.isArray(stored.discarded) ? stored.discarded : [];
         stored.supplies = Array.isArray(stored.supplies) ? stored.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : [];
         for (const entries of Object.values(stored.entries)) {
@@ -70,7 +71,7 @@
         return stored;
       }
     } catch (_) { /* Use the example data when storage is unavailable or invalid. */ }
-    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {}, supplies: [], discarded: [] };
+    return { duties: defaults.slice(), entries: {}, colors: {}, templates: {}, members: [], notes: {}, supplies: [], discarded: [], checks: {} };
   }
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -108,6 +109,7 @@
       members: Array.isArray(value.members) ? value.members.filter(item => typeof item === 'string') : [],
       notes: value.notes && typeof value.notes === 'object' && !Array.isArray(value.notes) ? value.notes : {},
       supplies: Array.isArray(value.supplies) ? value.supplies.filter(s => s && typeof s.name === 'string' && typeof s.expiry === 'string') : [],
+      checks: value.checks && typeof value.checks === 'object' && !Array.isArray(value.checks) ? value.checks : {},
       discarded: Array.isArray(value.discarded) ? value.discarded.filter(s => s && typeof s.name === 'string') : []
     };
     for (const entries of Object.values(normalized.entries)) {
@@ -1160,6 +1162,13 @@
       (!q || `${i.name} ${i.location || ''} ${i.lot || ''}`.toLowerCase().includes(q)));
     renderDiscardHistory();
     list.replaceChildren();
+    if (placeFilter !== '__all' || (places.length === 1 && places[0] !== NO_PLACE)) {
+      const place = placeFilter !== '__all' ? placeFilter : places[0];
+      const bar = document.createElement('div'); bar.className = 'place-heading single';
+      bar.innerHTML = '<div><b></b><small></small></div>';
+      bar.firstChild.children[0].textContent = `📍 ${place}`; bar.firstChild.children[1].textContent = lastCheckLabel(place);
+      bar.append(checkButton(place)); list.append(bar);
+    }
     if (!shown.length) {
       const empty = document.createElement('div'); empty.className = 'supply-empty';
       empty.textContent = all.length ? 'ไม่มีรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีเวชภัณฑ์\nกด "＋ เพิ่ม" เพื่อบันทึกรายการแรก';
@@ -1181,9 +1190,12 @@
         lastPlace = placeOf(item);
         const inPlace = shown.filter(i => placeOf(i) === lastPlace);
         const head = document.createElement('div'); head.className = 'place-heading';
-        head.innerHTML = '<b></b><span></span>'; head.firstChild.textContent = `📍 ${lastPlace}`;
+        head.innerHTML = '<div><b></b><span></span><small></small></div>'; const box = head.firstChild;
+        box.children[0].textContent = `📍 ${lastPlace}`;
         const bad = inPlace.filter(i => i.days <= 30).length;
-        head.lastChild.textContent = `${inPlace.length} รายการ${bad ? ` · ต้องดู ${bad}` : ''}`;
+        box.children[1].textContent = ` · ${inPlace.length} รายการ${bad ? ` · ต้องดู ${bad}` : ''}`;
+        box.children[2].textContent = lastCheckLabel(lastPlace);
+        head.append(checkButton(lastPlace));
         list.append(head);
       }
       const [y, m, d] = item.expiry.split('-').map(Number);
@@ -1203,6 +1215,27 @@
       row.addEventListener('click', () => openSupplyDialog(item.id));
       list.append(row);
     });
+  }
+  // ---- Inspections per storage place ----
+  function checksFor(place) { if (!data.checks || typeof data.checks !== 'object') data.checks = {}; return Array.isArray(data.checks[place]) ? data.checks[place] : []; }
+  function lastCheckLabel(place) {
+    const last = checksFor(place)[0];
+    if (!last) return 'ยังไม่เคยบันทึกการตรวจ';
+    const days = -daysUntil(last);
+    return `ตรวจล่าสุด ${thaiShort(last)} (${days === 0 ? 'วันนี้' : days === 1 ? 'เมื่อวาน' : `${days} วันก่อน`})`;
+  }
+  function toggleCheckToday(place) {
+    const today = dateKey(new Date()); const list = checksFor(place);
+    data.checks[place] = list[0] === today ? list.slice(1) : [today, ...list].slice(0, 60);
+    save(); renderSupplies();
+  }
+  function checkButton(place) {
+    const done = checksFor(place)[0] === dateKey(new Date());
+    const b = document.createElement('button'); b.type = 'button'; b.className = `check-button${done ? ' done' : ''}`;
+    b.textContent = done ? '✔ ตรวจแล้ววันนี้' : 'ตรวจแล้ววันนี้';
+    b.title = done ? 'แตะอีกครั้งเพื่อยกเลิก' : 'บันทึกว่าตรวจที่นี่แล้ววันนี้';
+    b.addEventListener('click', e => { e.stopPropagation(); toggleCheckToday(place); });
+    return b;
   }
   function discardSupply(id) {
     const item = supplies().find(s => s.id === id); if (!item) return;
@@ -1310,8 +1343,12 @@
     }));
     $('alarmNote').textContent = '';
     $('supplyAlarm').hidden = false;
-    playSiren(3);
-    try { navigator.vibrate?.([300, 120, 300, 120, 600, 200, 300, 120, 300]); } catch (_) {}
+    // Browsers only allow sound/vibration after the user has tapped the page; skip them on an automatic open.
+    const canMakeNoise = !navigator.userActivation || navigator.userActivation.hasBeenActive;
+    if (canMakeNoise) {
+      playSiren(3);
+      try { navigator.vibrate?.([300, 120, 300, 120, 600, 200, 300, 120, 300]); } catch (_) {}
+    }
     if (fromNotification) { $('alarmNote').textContent = '🔔 เปิดจากแจ้งเตือนเวชภัณฑ์'; return; }
     // Also fire a real system notification, like the morning reminder.
     try {
@@ -1341,6 +1378,19 @@
     setTimeout(() => { if ($('supplyAlarm').hidden) alarmFromNotification(); }, 3000);
   }
   navigator.serviceWorker?.addEventListener('message', event => { if (event.data?.type === 'show-supply-alarm') alarmFromNotification(); });
+  // Opening the app: show the full-screen alarm once a day while expired supplies are still on the list.
+  const AUTO_ALARM_KEY = 'nursing-duty-auto-alarm-v1';
+  function autoAlarmIfExpired() {
+    const today = dateKey(new Date());
+    let shown = ''; try { shown = localStorage.getItem(AUTO_ALARM_KEY) || ''; } catch (_) {}
+    if (shown === today || !$('supplyAlarm').hidden) return;
+    if (!supplies().some(s => daysUntil(s.expiry) < 0)) return;
+    try { localStorage.setItem(AUTO_ALARM_KEY, today); } catch (_) {}
+    testSupplyAlarm({ fromNotification: true });
+    $('alarmNote').textContent = '⏰ เตือนอัตโนมัติวันละครั้ง จนกว่าจะกด "ทิ้งแล้ว" หรือเปลี่ยนล็อต';
+  }
+  setTimeout(autoAlarmIfExpired, 2500); // after cloud data has had a moment to load
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(autoAlarmIfExpired, 800); });
   $('alarmOk').addEventListener('click', closeAlarm);
   $('alarmView').addEventListener('click', () => { closeAlarm(); showTab('supplies'); setSupplyFilter(supplies().some(s => daysUntil(s.expiry) < 0) ? 'expired' : 'soon'); });
 
@@ -1481,7 +1531,7 @@
   $('printSupplies').addEventListener('click', () => {
     const rows = sortedSupplies();
     if (!rows.length) { alert('ยังไม่มีรายการเวชภัณฑ์'); return; }
-    $('supplyPrintDate').textContent = `${placeFilter === '__all' ? '' : `📍 ${placeFilter} · `}พิมพ์เมื่อ ${thaiFullDate(dateKey(new Date()))} · ทั้งหมด ${rows.length} รายการ · หมดอายุแล้ว ${rows.filter(r => r.days < 0).length} · ใกล้หมด (≤30 วัน) ${rows.filter(r => r.days >= 0 && r.days <= 30).length}`;
+    $('supplyPrintDate').textContent = `${placeFilter === '__all' ? '' : `📍 ${placeFilter} · ${lastCheckLabel(placeFilter)} · `}พิมพ์เมื่อ ${thaiFullDate(dateKey(new Date()))} · ทั้งหมด ${rows.length} รายการ · หมดอายุแล้ว ${rows.filter(r => r.days < 0).length} · ใกล้หมด (≤30 วัน) ${rows.filter(r => r.days >= 0 && r.days <= 30).length}`;
     $('supplyPrintBody').replaceChildren(...rows.map((item, index) => {
       const tr = document.createElement('tr'); tr.className = item.days < 0 ? 'expired' : item.days <= 30 ? 'soon' : '';
       [String(index + 1), item.name, thaiFullDate(item.expiry), leftLabel(item.days), item.location || '', item.lot || '', ''].forEach((text, col) => {
@@ -1680,7 +1730,7 @@
       const backup = JSON.parse(await file.text());
       if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
       if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
-      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [], discarded: Array.isArray(backup.discarded) ? backup.discarded : [] };
+      data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [], discarded: Array.isArray(backup.discarded) ? backup.discarded : [], checks: backup.checks && typeof backup.checks === 'object' ? backup.checks : {} };
       for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
       save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');
     } catch (_) { alert('อ่านไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์สำรอง JSON ที่ถูกต้อง'); }
