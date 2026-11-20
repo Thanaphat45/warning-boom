@@ -587,3 +587,10 @@ footer { color: var(--muted); text-align: center; margin: 18px 0 8px; }
 .place-heading.single { margin-top: 0; }
 .check-button { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
 .check-button.done { border-color: #2e7d32; background: #e8f5e9; color: #2e7d32; }
+
+.snapshot-box { margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
+.snapshot-box summary { font-size: 14px; font-weight: 800; cursor: pointer; }
+.snapshot-list { display: grid; gap: 6px; margin-top: 8px; }
+.snapshot-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: #fff; }
+.snapshot-row small { display: block; color: var(--muted); font-size: 12px; }
+.snapshot-row .secondary-button { flex: 0 0 auto; min-height: 36px; padding: 0 12px; font-size: 13px; }

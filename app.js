@@ -284,13 +284,75 @@
     $('forgotPassword').closest('.template-actions').hidden = Boolean(user);
     if (user) syncStatus(`เข้าสู่ระบบแล้ว: ${user.email || 'บัญชี Supabase'}`);
   }
+
+  // ================= Data safety: snapshots + merge instead of overwrite =================
+  // Every time local data is about to be replaced (cloud load, remote update that removes items,
+  // backup import, snapshot restore) the current local copy is saved here first. Restore from Settings.
+  const SNAPSHOT_KEY = 'nursing-duty-snapshots-v1';
+  function countItems(d) {
+    const entries = Object.values(d?.entries || {}).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
+    return { entries, supplies: Array.isArray(d?.supplies) ? d.supplies.length : 0, notes: Object.keys(d?.notes || {}).length };
+  }
+  const isEmptyData = d => { const c = countItems(d); return !c.entries && !c.supplies && !c.notes; };
+  function readSnapshots() { try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]'); } catch (_) { return []; } }
+  function snapshotLocal(reason, source = data) {
+    try {
+      if (!source || isEmptyData(source)) return;
+      const json = JSON.stringify(source); const list = readSnapshots();
+      if (list[0] && JSON.stringify(list[0].data) === json) return;
+      list.unshift({ at: new Date().toISOString(), reason, data: JSON.parse(json) });
+      let kept = list.slice(0, 15);
+      // localStorage is small: drop the oldest snapshots until it fits.
+      while (kept.length) { try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(kept)); break; } catch (_) { kept = kept.slice(0, -1); } }
+    } catch (_) {}
+  }
+  function mergeData(local, cloud) {
+    const out = JSON.parse(JSON.stringify(cloud));
+    const L = local || {};
+    // duty entries: union per day
+    out.entries = out.entries || {};
+    for (const [day, list] of Object.entries(L.entries || {})) {
+      if (!Array.isArray(list)) continue;
+      const have = out.entries[day] || [];
+      const key = e => `${e.duty}|${e.note || ''}|${e.assignee || ''}`;
+      const seen = new Set(have.map(key));
+      list.forEach(e => { if (e && typeof e.duty === 'string' && !seen.has(key(e))) { have.push(e); seen.add(key(e)); } });
+      if (have.length) out.entries[day] = have;
+    }
+    // supplies: union by id, and skip exact duplicates (same name + expiry + place)
+    out.supplies = Array.isArray(out.supplies) ? out.supplies : [];
+    const ids = new Set(out.supplies.map(s => s.id));
+    const sig = s => `${(s.name || '').trim().toLowerCase()}|${s.expiry}|${(s.location || '').trim()}`;
+    const sigs = new Set(out.supplies.map(sig));
+    (L.supplies || []).forEach(s => { if (s && !ids.has(s.id) && !sigs.has(sig(s))) { out.supplies.push(s); ids.add(s.id); sigs.add(sig(s)); } });
+    // discarded history: union
+    out.discarded = Array.isArray(out.discarded) ? out.discarded : [];
+    const dsig = s => `${s.name}|${s.expiry}|${s.discardedAt}`;
+    const dseen = new Set(out.discarded.map(dsig));
+    (L.discarded || []).forEach(s => { if (s && !dseen.has(dsig(s))) { out.discarded.push(s); dseen.add(dsig(s)); } });
+    // notes: cloud wins on the same day
+    out.notes = { ...(L.notes || {}), ...(out.notes || {}) };
+    // inspections: union of dates per place
+    out.checks = out.checks || {};
+    for (const [place, dates] of Object.entries(L.checks || {})) {
+      out.checks[place] = [...new Set([...(out.checks[place] || []), ...(dates || [])])].sort().reverse().slice(0, 60);
+    }
+    out.duties = [...new Set([...(out.duties || []), ...(L.duties || [])])];
+    out.members = [...new Set([...(out.members || []), ...(L.members || [])])];
+    out.colors = { ...(L.colors || {}), ...(out.colors || {}) };
+    out.templates = { ...(L.templates || {}), ...(out.templates || {}) };
+    return out;
+  }
   async function startRealtime(id) {
     if (syncChannel) await supabaseClient.removeChannel(syncChannel);
     syncChannel = supabaseClient.channel(`schedule-${id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'schedule_data', filter: `schedule_id=eq.${id}` }, payload => {
         if (syncSaveTimer || !payload.new?.payload) return;
         try {
-          applyingRemoteData = true; data = normalizeScheduleData(payload.new.payload);
+          const incoming = normalizeScheduleData(payload.new.payload);
+          const before = countItems(data), after = countItems(incoming);
+          if (after.entries < before.entries || after.supplies < before.supplies || after.notes < before.notes) snapshotLocal('ก่อนรับการเปลี่ยนแปลงจากอีกเครื่อง');
+          applyingRemoteData = true; data = incoming;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); applyingRemoteData = false;
           renderDutyList(); renderAll(); syncStatus('รับการเปลี่ยนแปลงจากผู้ร่วมงานแล้ว');
         } catch (error) { applyingRemoteData = false; syncStatus(`รับข้อมูลไม่สำเร็จ: ${error.message}`); }
@@ -325,10 +387,21 @@
   async function loadSharedSchedule(id) {
     const { data: record, error } = await supabaseClient.from('schedule_data').select('payload').eq('schedule_id', id).single();
     if (error) { cloudScheduleId = null; syncStatus(`เปิดตารางไม่สำเร็จ: ${error.message}`); return false; }
-    try { data = normalizeScheduleData(record.payload); if (accountName && !data.members.includes(accountName)) data.members.push(accountName); }
+    let needsUpload = false;
+    try {
+      const cloud = normalizeScheduleData(record.payload);
+      const local = data;
+      snapshotLocal('ก่อนโหลดข้อมูลจากคลาวด์', local);
+      // Never drop data that exists only on this device: merge it into the cloud copy and upload.
+      const merged = isEmptyData(local) ? cloud : normalizeScheduleData(mergeData(local, cloud));
+      needsUpload = JSON.stringify(merged) !== JSON.stringify(cloud);
+      data = merged;
+      if (accountName && !data.members.includes(accountName)) data.members.push(accountName);
+    }
     catch (parseError) { syncStatus(`ข้อมูลตารางอ่านไม่ได้: ${parseError.message}`); return false; }
     cloudScheduleId = id; localStorage.setItem(SHARED_SCHEDULE_KEY, id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (needsUpload) queueCloudSave();
     const { data: schedule } = await supabaseClient.from('shared_schedules').select('invite_code,name').eq('id', id).single();
     if (schedule?.invite_code) {
       $('currentShareCode').hidden = false; $('copyShareCode').hidden = false;
@@ -1112,6 +1185,33 @@
   $('printSchedule').addEventListener('click', () => window.print());
   $('shareImage').addEventListener('click', shareScheduleImage);
   $('loveNote').addEventListener('click', openLoveNote);
+  // ---- Restore from local snapshots (Settings → ข้อมูล) ----
+  document.querySelector('.snapshot-box')?.addEventListener('toggle', e => { if (e.target.open) renderSnapshots(); });
+  function renderSnapshots() {
+    const box = $('snapshotList'); if (!box) return;
+    const list = readSnapshots();
+    box.replaceChildren();
+    if (!list.length) { const p = document.createElement('p'); p.className = 'step-hint'; p.textContent = 'ยังไม่มีสำเนา (แอปจะเก็บให้เองทุกครั้งก่อนข้อมูลถูกแทนที่)'; box.append(p); return; }
+    const fmt = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    list.forEach((snap, index) => {
+      const c = countItems(snap.data);
+      const row = document.createElement('div'); row.className = 'snapshot-row';
+      const info = document.createElement('div');
+      const title = document.createElement('b'); title.textContent = fmt.format(new Date(snap.at));
+      const meta = document.createElement('small'); meta.textContent = `${snap.reason} · เวร ${c.entries} · เวชภัณฑ์ ${c.supplies} · ข้อความ ${c.notes}`;
+      info.append(title, meta);
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'secondary-button'; btn.textContent = 'ใช้ชุดนี้';
+      btn.addEventListener('click', () => {
+        if (!confirm(`ย้อนข้อมูลกลับไปเป็นชุดวันที่ ${fmt.format(new Date(snap.at))} หรือไม่?\n(เวร ${c.entries} · เวชภัณฑ์ ${c.supplies})\nข้อมูลตอนนี้จะถูกเก็บเป็นสำเนาไว้ก่อน ย้อนกลับได้`)) return;
+        snapshotLocal('ก่อนย้อนข้อมูล');
+        // Merge so nothing currently on the cloud is lost either; then save (uploads when signed in).
+        data = normalizeScheduleData(mergeData(data, snap.data));
+        save(); renderDutyList(); renderAll(); renderSnapshots();
+        alert('ย้อนข้อมูลแล้ว ✔');
+      });
+      row.append(info, btn); box.append(row);
+    });
+  }
   // ---------------- Supplies (เวชภัณฑ์) with expiry dates ----------------
   let supplyFilter = 'all'; let editingSupplyId = null; let placeFilter = '__all';
   const NO_PLACE = 'ไม่ระบุที่เก็บ';
@@ -1614,6 +1714,7 @@
     try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
     if (focus) focus.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0 });
     if (name === 'duties') renderTemplates();
+    if (name === 'settings') renderSnapshots();
     $('secretSheet').hidden = true;
   }
   document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => showTab(item.dataset.tab)));
@@ -1730,6 +1831,7 @@
       const backup = JSON.parse(await file.text());
       if (!validateBackup(backup)) { alert('ไฟล์นี้ไม่ใช่ข้อมูลสำรองตารางเวรที่รองรับ'); return; }
       if (!confirm('นำเข้าข้อมูลนี้แทนตารางที่บันทึกไว้ในเบราว์เซอร์นี้หรือไม่?')) return;
+      snapshotLocal('ก่อนนำเข้าข้อมูลสำรอง');
       data = { duties: [...new Set(backup.duties)], entries: backup.entries, colors: backup.colors || {}, templates: backup.templates || {}, members: Array.isArray(backup.members) ? backup.members.filter(item => typeof item === 'string') : [], notes: backup.notes && typeof backup.notes === 'object' && !Array.isArray(backup.notes) ? backup.notes : {}, supplies: Array.isArray(backup.supplies) ? backup.supplies : [], discarded: Array.isArray(backup.discarded) ? backup.discarded : [], checks: backup.checks && typeof backup.checks === 'object' ? backup.checks : {} };
       for (const entries of Object.values(data.entries)) if (Array.isArray(entries)) entries.forEach(entry => { entry.done = Boolean(entry.done); });
       save(); renderDutyList(); renderAll(); alert('นำเข้าข้อมูลสำรองแล้ว');

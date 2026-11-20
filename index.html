@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>ตารางหน้าที่ของฉัน</title>
   <script>try { var z = localStorage.getItem('nursing-duty-ui-zoom'); if (z) document.documentElement.style.setProperty('--ui-zoom', z); } catch (e) {}</script>
-  <link rel="stylesheet" href="styles.css?v=2026-11-09.10">
+  <link rel="stylesheet" href="styles.css?v=2026-11-20.1">
 </head>
 <body>
   <main class="shell">
@@ -249,6 +249,11 @@
           <button class="secondary-button" type="button" id="importBackupButton">นำเข้าข้อมูลสำรอง</button>
           <input type="file" id="importBackupFile" accept=".json,application/json" hidden>
         </div>
+        <details class="snapshot-box">
+          <summary>🕘 ย้อนข้อมูลจากสำเนาอัตโนมัติ</summary>
+          <p class="step-hint">แอปเก็บสำเนาในเครื่องนี้ให้เองทุกครั้งก่อนข้อมูลจะถูกแทนที่ (เช่น ตอนล็อกอินหรือรับข้อมูลจากอีกเครื่อง)</p>
+          <div class="snapshot-list" id="snapshotList"></div>
+        </details>
       </section>
       <footer>ตารางหน้าที่ของฉัน <span id="secretHeart" class="secret-heart">❤️</span><br><button class="version-button" type="button" id="versionButton">เวอร์ชัน</button></footer>
     </div>
@@ -388,7 +393,7 @@
       </div>
     </form>
   </div>
-  <script>const APP_VERSION = '2026-11-09.10';</script>
-  <script src="app.js?v=2026-11-09.10"></script>
+  <script>const APP_VERSION = '2026-11-20.1';</script>
+  <script src="app.js?v=2026-11-20.1"></script>
 </body>
 </html>
